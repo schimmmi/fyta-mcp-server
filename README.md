@@ -1,121 +1,122 @@
 # FYTA MCP Server 🌱
 
-Ein Model Context Protocol (MCP) Server für FYTA Pflanzensensor-Daten. Damit kannst du über Claude direkt auf deine Pflanzen-Daten zugreifen!
+A Model Context Protocol (MCP) Server for FYTA plant sensor data. Access your plant data directly through Claude!
 
-## Was ist das?
+## What is this?
 
-FYTA ist ein smartes Pflanzensensor-System, das Bodenfeuchtigkeit, Temperatur, Licht und Nährstoffe misst. Dieser MCP Server ermöglicht es Claude, auf diese Daten zuzugreifen und dir bei der Pflanzenpflege zu helfen.
+FYTA is a smart plant sensor system that measures soil moisture, temperature, light, and nutrients. This MCP Server enables Claude to access this data and help you with plant care.
 
 ## Features
 
-- 🌿 **Alle Pflanzen abrufen**: Kompletter Überblick über alle deine Pflanzen mit Sensordaten
-- 🔍 **Pflanzendetails**: Detaillierte Infos zu einzelnen Pflanzen
-- ⚠️ **Pflanzen mit Problemen**: Automatische Erkennung von Pflanzen, die Aufmerksamkeit brauchen
-- 🏡 **Garten-Übersicht**: Organisierte Ansicht deiner Gärten und Pflanzen
+- 🌿 **Get all plants**: Complete overview of all your plants with sensor data
+- 🔍 **Plant details**: Detailed information about individual plants
+- ⚠️ **Plants needing attention**: Automatic detection of plants that need care
+- 🏡 **Garden overview**: Organized view of your gardens and plants
 
 ## Installation
 
-### Voraussetzungen
+### Prerequisites
 
-- Python 3.10 oder höher (oder Docker)
-- Ein FYTA Account mit Pflanzen
-- Claude Desktop App (oder anderer MCP-kompatibler Client)
+- Python 3.10 or higher (or Docker)
+- A FYTA account with plants
+- Claude Desktop App (or other MCP-compatible client)
 
-### Setup mit Docker (empfohlen)
+### Setup with Docker (recommended)
 
-1. **Docker und Docker Compose installieren**
+1. **Install Docker and Docker Compose**
 
-Stelle sicher, dass Docker auf deinem System installiert ist.
+Make sure Docker is installed on your system.
 
-2. **Repository klonen**
+2. **Clone repository**
 
 ```bash
 cd ~/fyta-mcp-server
 ```
 
-3. **Umgebungsvariablen setzen**
+3. **Set environment variables**
 
-Erstelle eine `.env` Datei:
+Create a `.env` file:
 
 ```bash
 cp .env.example .env
 ```
 
-Und trage deine FYTA-Zugangsdaten ein:
+And enter your FYTA credentials:
 
 ```env
-FYTA_EMAIL=deine-email@example.com
-FYTA_PASSWORD=dein-passwort
+FYTA_EMAIL=your-email@example.com
+FYTA_PASSWORD=your-password
 ```
 
-4. **Container bauen und starten**
+4. **Build and start container**
 
 ```bash
 docker-compose up -d
 ```
 
-**Container-Befehle:**
+**Container commands:**
 
 ```bash
-# Container stoppen
+# Stop container
 docker-compose down
 
-# Logs anzeigen
+# Show logs
 docker-compose logs -f
 
-# Container neu bauen
+# Rebuild container
 docker-compose build
 
-# Container neu starten
+# Restart container
 docker-compose restart
 ```
 
-### Setup ohne Docker
+### Setup without Docker
 
-1. **Repository klonen oder Dateien herunterladen**
+1. **Clone repository or download files**
 
 ```bash
 cd ~/fyta-mcp-server
 ```
 
-2. **Virtuelle Umgebung erstellen (optional aber empfohlen)**
+2. **Create virtual environment (optional but recommended)**
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate  # Auf Windows: .venv\Scripts\activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-3. **Dependencies installieren**
+3. **Install dependencies**
 
 ```bash
 pip install -r requirements.txt
+pip install -e .
 ```
 
-4. **Umgebungsvariablen setzen**
+4. **Set environment variables**
 
-Erstelle eine `.env` Datei:
+Create a `.env` file:
 
 ```bash
 cp .env.example .env
 ```
 
-Und trage deine FYTA-Zugangsdaten ein:
+And enter your FYTA credentials:
 
 ```env
-FYTA_EMAIL=deine-email@example.com
-FYTA_PASSWORD=dein-passwort
+FYTA_EMAIL=your-email@example.com
+FYTA_PASSWORD=your-password
 ```
 
-**Wichtig**: Die `.env` Datei sollte NIEMALS in Git committed werden!
+**Important**: The `.env` file should NEVER be committed to Git!
 
-## Konfiguration für Claude Desktop
+## Configuration for Claude Desktop
 
-Füge folgendes zu deiner Claude Desktop Konfiguration hinzu:
+Add the following to your Claude Desktop configuration:
 
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-### Mit Docker (empfohlen)
+### With Docker (recommended)
 
 ```json
 {
@@ -127,7 +128,7 @@ Füge folgendes zu deiner Claude Desktop Konfiguration hinzu:
         "--rm",
         "-i",
         "--env-file",
-        "/absoluter/pfad/zu/fyta-mcp-server/.env",
+        "/absolute/path/to/fyta-mcp-server/.env",
         "fyta-mcp-server"
       ]
     }
@@ -135,7 +136,7 @@ Füge folgendes zu deiner Claude Desktop Konfiguration hinzu:
 }
 ```
 
-Oder mit docker-compose:
+Or with docker-compose:
 
 ```json
 {
@@ -144,7 +145,7 @@ Oder mit docker-compose:
       "command": "docker-compose",
       "args": [
         "-f",
-        "/absoluter/pfad/zu/fyta-mcp-server/docker-compose.yml",
+        "/absolute/path/to/fyta-mcp-server/docker-compose.yml",
         "run",
         "--rm",
         "fyta-mcp-server"
@@ -154,28 +155,27 @@ Oder mit docker-compose:
 }
 ```
 
-### Ohne Docker (Python direkt)
+### Without Docker (Python directly)
 
 ```json
 {
   "mcpServers": {
     "fyta": {
-      "command": "python",
+      "command": "/absolute/path/to/fyta-mcp-server/.venv/bin/python",
       "args": [
         "-m",
-        "fyta_mcp_server.server"
+        "fyta_mcp_server"
       ],
-      "cwd": "/absoluter/pfad/zu/fyta-mcp-server",
       "env": {
-        "FYTA_EMAIL": "deine-email@example.com",
-        "FYTA_PASSWORD": "dein-passwort"
+        "FYTA_EMAIL": "your-email@example.com",
+        "FYTA_PASSWORD": "your-password"
       }
     }
   }
 }
 ```
 
-Oder mit uv:
+Or with uv:
 
 ```json
 {
@@ -184,129 +184,119 @@ Oder mit uv:
       "command": "uv",
       "args": [
         "--directory",
-        "/absoluter/pfad/zu/fyta-mcp-server",
+        "/absolute/path/to/fyta-mcp-server",
         "run",
         "python",
         "-m",
-        "fyta_mcp_server.server"
+        "fyta_mcp_server"
       ],
       "env": {
-        "FYTA_EMAIL": "deine-email@example.com",
-        "FYTA_PASSWORD": "dein-passwort"
+        "FYTA_EMAIL": "your-email@example.com",
+        "FYTA_PASSWORD": "your-password"
       }
     }
   }
 }
 ```
 
-## Verwendung
+## Usage
 
-Nach dem Neustart von Claude Desktop stehen dir folgende Tools zur Verfügung:
+After restarting Claude Desktop, the following tools are available:
 
-### 1. Alle Pflanzen abrufen
-
-```
-Zeig mir alle meine Pflanzen
-```
-
-### 2. Details zu einer bestimmten Pflanze
+### 1. Get all plants
 
 ```
-Zeig mir Details zu Pflanze mit ID 123
+Show me all my plants
 ```
 
-### 3. Pflanzen, die Aufmerksamkeit brauchen
+### 2. Details for a specific plant
 
 ```
-Welche meiner Pflanzen brauchen gerade Pflege?
+Show me details for plant with ID 123
 ```
 
-### 4. Garten-Übersicht
+### 3. Plants needing attention
 
 ```
-Gib mir eine Übersicht über meine Gärten
+Which of my plants need care right now?
+```
+
+### 4. Garden overview
+
+```
+Give me an overview of my gardens
 ```
 
 ## API Endpoints
 
-Der Server nutzt folgende FYTA API Endpoints:
+The server uses the following FYTA API endpoints:
 
-- `POST https://web.fyta.de/api/auth/login` - Authentifizierung
-- `GET https://web.fyta.de/api/user-plant` - Pflanzendaten abrufen
+- `POST https://web.fyta.de/api/auth/login` - Authentication
+- `GET https://web.fyta.de/api/user-plant` - Retrieve plant data
 
-## Statuswerte
+## Status Values
 
-Die Sensoren geben folgende Statuswerte zurück:
+The sensors return the following status values:
 
-- **1** = Zu niedrig (Low)
+- **1** = Too low (Low)
 - **2** = Optimal
-- **3** = Zu hoch (High)
+- **3** = Too high (High)
 
-Dies gilt für:
-- Temperatur (`temperature_status`)
-- Licht (`light_status`)
-- Bodenfeuchtigkeit (`moisture_status`)
-- Nährstoffe/Salzgehalt (`salinity_status`)
+This applies to:
+- Temperature (`temperature_status`)
+- Light (`light_status`)
+- Soil moisture (`moisture_status`)
+- Nutrients/Salinity (`salinity_status`)
 
 ## Troubleshooting
 
-### Server startet nicht
+### Server won't start
 
-1. Überprüfe, ob die Umgebungsvariablen korrekt gesetzt sind
-2. Teste die Authentifizierung:
+1. Check if environment variables are set correctly
+2. Test authentication:
 
 ```bash
-python -c "
-import asyncio
-import os
-from server import FytaClient
-
-async def test():
-    client = FytaClient(os.getenv('FYTA_EMAIL'), os.getenv('FYTA_PASSWORD'))
-    result = await client.authenticate()
-    print(f'Auth result: {result}')
-    await client.close()
-
-asyncio.run(test())
-"
+cd /path/to/fyta-mcp-server
+source .venv/bin/activate
+python tests/test_connection.py
 ```
 
-### Keine Daten verfügbar
+### No data available
 
-- Stelle sicher, dass du einen FYTA Hub oder die mobile App als Gateway verwendest
-- Die FYTA Beam Sensoren senden nur Rohdaten, die vom Server verarbeitet werden müssen
-- Überprüfe in der FYTA App, ob deine Sensoren verbunden sind
+- Make sure you're using a FYTA Hub or the mobile app as a gateway
+- FYTA Beam sensors only send raw data that needs to be processed by the server
+- Check in the FYTA app if your sensors are connected
 
-## Entwicklung
+## Development
 
-### Weitere Endpoints hinzufügen
+### Adding more endpoints
 
-Du kannst weitere Tools hinzufügen, indem du:
+You can add more tools by:
 
-1. Ein neues Tool in der `list_tools()` Funktion definierst
-2. Die Logik in der `call_tool()` Funktion implementierst
+1. Defining a new tool in `src/fyta_mcp_server/tools.py`
+2. Implementing the handler in `src/fyta_mcp_server/handlers.py`
 
-### API Dokumentation
+### API Documentation
 
-Die vollständige FYTA API Dokumentation findest du hier:
+The complete FYTA API documentation can be found here:
 https://fyta-io.notion.site/FYTA-Public-API-d2f4c30306f74504924c9a40402a3afd
 
 ## Credits
 
 - FYTA API: https://fyta.de/
-- Basiert auf dem Python Client: https://github.com/dontinelli/fyta_cli
+- Based on Python client: https://github.com/dontinelli/fyta_cli
 - Home Assistant Integration: https://github.com/dontinelli/fyta-custom_component
 
-## Lizenz
+## License
 
-GPL-3.0 (kompatibel mit dem fyta_cli Projekt)
+GPL-3.0 (compatible with the fyta_cli project)
 
 ## Support
 
-Bei Fragen oder Problemen:
-- Öffne ein Issue auf GitHub: https://github.com/schimmmi/fyta-mcp-server/issues
-- Schau in die FYTA Developer Community auf Discord
-- Besuche https://fyta.de/ für mehr Infos zu den Sensoren
+For questions or issues:
+- Open an issue on GitHub: https://github.com/schimmmi/fyta-mcp-server/issues
+- Check out the FYTA Developer Community on Discord
+- Visit https://fyta.de/ for more info about the sensors
 
 ## Repository
 
@@ -314,4 +304,4 @@ GitHub: https://github.com/schimmmi/fyta-mcp-server
 
 ---
 
-Viel Spaß beim Pflanzen-Monitoring mit Claude! 🌿🤖
+Happy plant monitoring with Claude! 🌿🤖
