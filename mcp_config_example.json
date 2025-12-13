@@ -1,9 +1,10 @@
 {
   "mcpServers": {
     "fyta": {
-      "command": "python",
+      "command": "/absoluter/pfad/zu/fyta-mcp-server/.venv/bin/python",
       "args": [
-        "/home/dein-username/fyta-mcp-server/server.py"
+        "-m",
+        "fyta_mcp_server"
       ],
       "env": {
         "FYTA_EMAIL": "deine-email@example.com",

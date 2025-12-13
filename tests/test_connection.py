@@ -16,8 +16,8 @@ except ImportError:
     print("python-dotenv nicht installiert - Umgebungsvariablen müssen manuell gesetzt werden")
 
 # Server-Modul importieren
-sys.path.insert(0, str(Path(__file__).parent))
-from server import FytaClient
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from fyta_mcp_server.client import FytaClient
 
 
 async def test_connection():

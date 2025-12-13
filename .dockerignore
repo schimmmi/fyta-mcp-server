@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Environment
+.env
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Tests (not needed in production container)
+tests/
+
+# Other
+.DS_Store
+mcp_config_example.json

@@ -17,11 +17,60 @@ FYTA ist ein smartes Pflanzensensor-System, das Bodenfeuchtigkeit, Temperatur, L
 
 ### Voraussetzungen
 
-- Python 3.10 oder höher
+- Python 3.10 oder höher (oder Docker)
 - Ein FYTA Account mit Pflanzen
 - Claude Desktop App (oder anderer MCP-kompatibler Client)
 
-### Setup
+### Setup mit Docker (empfohlen)
+
+1. **Docker und Docker Compose installieren**
+
+Stelle sicher, dass Docker auf deinem System installiert ist.
+
+2. **Repository klonen**
+
+```bash
+cd ~/fyta-mcp-server
+```
+
+3. **Umgebungsvariablen setzen**
+
+Erstelle eine `.env` Datei:
+
+```bash
+cp .env.example .env
+```
+
+Und trage deine FYTA-Zugangsdaten ein:
+
+```env
+FYTA_EMAIL=deine-email@example.com
+FYTA_PASSWORD=dein-passwort
+```
+
+4. **Container bauen und starten**
+
+```bash
+docker-compose up -d
+```
+
+**Container-Befehle:**
+
+```bash
+# Container stoppen
+docker-compose down
+
+# Logs anzeigen
+docker-compose logs -f
+
+# Container neu bauen
+docker-compose build
+
+# Container neu starten
+docker-compose restart
+```
+
+### Setup ohne Docker
 
 1. **Repository klonen oder Dateien herunterladen**
 
@@ -32,8 +81,8 @@ cd ~/fyta-mcp-server
 2. **Virtuelle Umgebung erstellen (optional aber empfohlen)**
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # Auf Windows: venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate  # Auf Windows: .venv\Scripts\activate
 ```
 
 3. **Dependencies installieren**
@@ -66,14 +115,57 @@ Füge folgendes zu deiner Claude Desktop Konfiguration hinzu:
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
+### Mit Docker (empfohlen)
+
+```json
+{
+  "mcpServers": {
+    "fyta": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--env-file",
+        "/absoluter/pfad/zu/fyta-mcp-server/.env",
+        "fyta-mcp-server"
+      ]
+    }
+  }
+}
+```
+
+Oder mit docker-compose:
+
+```json
+{
+  "mcpServers": {
+    "fyta": {
+      "command": "docker-compose",
+      "args": [
+        "-f",
+        "/absoluter/pfad/zu/fyta-mcp-server/docker-compose.yml",
+        "run",
+        "--rm",
+        "fyta-mcp-server"
+      ]
+    }
+  }
+}
+```
+
+### Ohne Docker (Python direkt)
+
 ```json
 {
   "mcpServers": {
     "fyta": {
       "command": "python",
       "args": [
-        "/absoluter/pfad/zu/fyta-mcp-server/server.py"
+        "-m",
+        "fyta_mcp_server.server"
       ],
+      "cwd": "/absoluter/pfad/zu/fyta-mcp-server",
       "env": {
         "FYTA_EMAIL": "deine-email@example.com",
         "FYTA_PASSWORD": "dein-passwort"
@@ -83,7 +175,7 @@ Füge folgendes zu deiner Claude Desktop Konfiguration hinzu:
 }
 ```
 
-Oder mit uv (empfohlen):
+Oder mit uv:
 
 ```json
 {
@@ -94,7 +186,9 @@ Oder mit uv (empfohlen):
         "--directory",
         "/absoluter/pfad/zu/fyta-mcp-server",
         "run",
-        "server.py"
+        "python",
+        "-m",
+        "fyta_mcp_server.server"
       ],
       "env": {
         "FYTA_EMAIL": "deine-email@example.com",

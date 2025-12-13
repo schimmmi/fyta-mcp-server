@@ -1,0 +1,16 @@
+services:
+  fyta-mcp-server:
+    build: .
+    container_name: fyta-mcp-server
+    environment:
+      - FYTA_EMAIL=${FYTA_EMAIL}
+      - FYTA_PASSWORD=${FYTA_PASSWORD}
+    env_file:
+      - .env
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    # For MCP servers, we typically use stdio, so no ports needed
+    # If you need to expose any ports, uncomment below:
+    # ports:
+    #   - "8080:8080"
