@@ -50,4 +50,4 @@ fyta-mcp-server/
 └── Docker files             # Container support
 ```
 
-[1.0.0]: https://github.com/username/fyta-mcp-server/releases/tag/v1.0.0
+[1.0.0]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.0.0

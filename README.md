@@ -304,9 +304,13 @@ GPL-3.0 (kompatibel mit dem fyta_cli Projekt)
 ## Support
 
 Bei Fragen oder Problemen:
-- Öffne ein Issue auf GitHub
+- Öffne ein Issue auf GitHub: https://github.com/schimmmi/fyta-mcp-server/issues
 - Schau in die FYTA Developer Community auf Discord
 - Besuche https://fyta.de/ für mehr Infos zu den Sensoren
+
+## Repository
+
+GitHub: https://github.com/schimmmi/fyta-mcp-server
 
 ---
 
