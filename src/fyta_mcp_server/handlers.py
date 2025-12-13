@@ -165,9 +165,10 @@ async def handle_get_garden_overview(fyta_client: FytaClient, arguments: Any) ->
 async def handle_get_plant_measurements(fyta_client: FytaClient, arguments: Any) -> list[TextContent]:
     """Handle get_plant_measurements tool call"""
     plant_id = int(arguments["plant_id"])
+    timeline = arguments.get("timeline", "month")  # Default to "month"
 
     try:
-        measurements = await fyta_client.get_plant_measurements(plant_id)
+        measurements = await fyta_client.get_plant_measurements(plant_id, timeline)
 
         return [TextContent(
             type="text",

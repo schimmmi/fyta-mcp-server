@@ -240,7 +240,7 @@ The server uses the following FYTA API endpoints:
 
 - `POST https://web.fyta.de/api/auth/login` - Authentication
 - `GET https://web.fyta.de/api/user-plant` - Retrieve plant data
-- `GET https://web.fyta.de/api/user-plant/measurements/[plantID]` - Retrieve historical measurements
+- `POST https://web.fyta.de/api/user-plant/measurements/[plantID]` - Retrieve historical measurements (with timeline: hour, day, week, month)
 
 ## Status Values
 

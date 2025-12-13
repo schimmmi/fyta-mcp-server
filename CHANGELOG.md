@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-12-13
+
+### Fixed
+- **Critical**: Fixed measurements endpoint to use POST instead of GET
+- Added required request body with timeline parameter
+- Fixed 422 error when retrieving plant measurements
+
+### Changed
+- `get_plant_measurements` now accepts optional `timeline` parameter ("hour", "day", "week", "month")
+- Updated API documentation to reflect POST method
+- Default timeline is "month" if not specified
+
+### Technical Details
+- Changed from `client.get()` to `client.post()` with JSON body
+- Added timeline parameter to tool schema with enum validation
+- Handler now passes timeline parameter to client method
+
 ## [1.1.0] - 2025-12-13
 
 ### Added
@@ -68,5 +85,6 @@ fyta-mcp-server/
 └── Docker files             # Container support
 ```
 
+[1.1.1]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.1.1
 [1.1.0]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.1.0
 [1.0.0]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.0.0

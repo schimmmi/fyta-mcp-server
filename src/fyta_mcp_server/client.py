@@ -78,13 +78,23 @@ class FytaClient:
 
         return None
 
-    async def get_plant_measurements(self, plant_id: int) -> Dict[str, Any]:
-        """Get historical measurements for a specific plant"""
+    async def get_plant_measurements(self, plant_id: int, timeline: str = "month") -> Dict[str, Any]:
+        """Get historical measurements for a specific plant
+
+        Args:
+            plant_id: The ID of the plant
+            timeline: Time range for measurements ("hour", "day", "week", "month")
+        """
         await self.ensure_authenticated()
 
         headers = {"Authorization": f"Bearer {self.access_token}"}
         url = f"{FYTA_MEASUREMENTS_ENDPOINT}/{plant_id}"
-        response = await self.client.get(url, headers=headers)
+        body = {
+            "search": {
+                "timeline": timeline
+            }
+        }
+        response = await self.client.post(url, headers=headers, json=body)
         response.raise_for_status()
 
         return response.json()

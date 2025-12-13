@@ -69,7 +69,8 @@ def get_tool_definitions() -> list[Tool]:
             description=(
                 "Get historical measurements and sensor data for a specific plant by ID. "
                 "Returns time-series data including temperature, light, moisture, and "
-                "nutrient measurements over time. Useful for tracking trends and plant health history."
+                "nutrient measurements over time. Useful for tracking trends and plant health history. "
+                "You can specify a timeline (hour, day, week, month) to control the time range."
             ),
             inputSchema={
                 "type": "object",
@@ -77,6 +78,11 @@ def get_tool_definitions() -> list[Tool]:
                     "plant_id": {
                         "type": "number",
                         "description": "The ID of the plant to retrieve measurements for"
+                    },
+                    "timeline": {
+                        "type": "string",
+                        "description": "Time range for measurements: 'hour', 'day', 'week', or 'month' (default: 'month')",
+                        "enum": ["hour", "day", "week", "month"]
                     }
                 },
                 "required": ["plant_id"]
