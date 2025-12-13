@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "fyta": {
+      "command": "python",
+      "args": [
+        "/home/dein-username/fyta-mcp-server/server.py"
+      ],
+      "env": {
+        "FYTA_EMAIL": "deine-email@example.com",
+        "FYTA_PASSWORD": "dein-passwort"
+      }
+    }
+  }
+}
