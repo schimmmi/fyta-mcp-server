@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-13
+
+### Added
+- New MCP tool: `get_plant_measurements` - Get historical sensor measurements for a specific plant
+- New API endpoint integration: `GET /user-plant/measurements/[plantID]`
+- Time-series data support for temperature, light, moisture, and nutrients
+- Enhanced plant monitoring with historical data access
+
+### Changed
+- Updated README.md with new tool documentation
+- Added API endpoint to documentation
+- Updated version to 1.1.0
+
+### Technical Details
+- New method in FytaClient: `get_plant_measurements(plant_id)`
+- New tool handler: `handle_get_plant_measurements()`
+- Returns complete historical measurement data in JSON format
+
 ## [1.0.0] - 2025-12-13
 
 ### Added
@@ -50,4 +68,5 @@ fyta-mcp-server/
 └── Docker files             # Container support
 ```
 
+[1.1.0]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.1.0
 [1.0.0]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.0.0
