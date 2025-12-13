@@ -289,7 +289,7 @@ https://fyta-io.notion.site/FYTA-Public-API-d2f4c30306f74504924c9a40402a3afd
 
 ## License
 
-GPL-3.0 (compatible with the fyta_cli project)
+MIT License - see [LICENSE](LICENSE) file for details
 
 ## Support
 
