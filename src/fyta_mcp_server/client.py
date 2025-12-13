@@ -13,6 +13,7 @@ logger = logging.getLogger("fyta-mcp-server")
 FYTA_BASE_URL = "https://web.fyta.de/api"
 FYTA_AUTH_ENDPOINT = f"{FYTA_BASE_URL}/auth/login"
 FYTA_USER_PLANT_ENDPOINT = f"{FYTA_BASE_URL}/user-plant"
+FYTA_MEASUREMENTS_ENDPOINT = f"{FYTA_BASE_URL}/user-plant/measurements"
 
 
 class FytaClient:
@@ -76,6 +77,17 @@ class FytaClient:
                 return plant
 
         return None
+
+    async def get_plant_measurements(self, plant_id: int) -> Dict[str, Any]:
+        """Get historical measurements for a specific plant"""
+        await self.ensure_authenticated()
+
+        headers = {"Authorization": f"Bearer {self.access_token}"}
+        url = f"{FYTA_MEASUREMENTS_ENDPOINT}/{plant_id}"
+        response = await self.client.get(url, headers=headers)
+        response.raise_for_status()
+
+        return response.json()
 
     async def close(self):
         """Close the HTTP client"""

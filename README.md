@@ -10,6 +10,7 @@ FYTA is a smart plant sensor system that measures soil moisture, temperature, li
 
 - 🌿 **Get all plants**: Complete overview of all your plants with sensor data
 - 🔍 **Plant details**: Detailed information about individual plants
+- 📊 **Plant measurements**: Historical sensor data and measurements over time
 - ⚠️ **Plants needing attention**: Automatic detection of plants that need care
 - 🏡 **Garden overview**: Organized view of your gardens and plants
 
@@ -215,13 +216,19 @@ Show me all my plants
 Show me details for plant with ID 123
 ```
 
-### 3. Plants needing attention
+### 3. Historical measurements for a plant
+
+```
+Show me historical measurements for plant with ID 123
+```
+
+### 4. Plants needing attention
 
 ```
 Which of my plants need care right now?
 ```
 
-### 4. Garden overview
+### 5. Garden overview
 
 ```
 Give me an overview of my gardens
@@ -233,6 +240,7 @@ The server uses the following FYTA API endpoints:
 
 - `POST https://web.fyta.de/api/auth/login` - Authentication
 - `GET https://web.fyta.de/api/user-plant` - Retrieve plant data
+- `GET https://web.fyta.de/api/user-plant/measurements/[plantID]` - Retrieve historical measurements
 
 ## Status Values
 

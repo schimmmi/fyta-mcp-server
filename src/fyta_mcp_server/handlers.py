@@ -162,12 +162,32 @@ async def handle_get_garden_overview(fyta_client: FytaClient, arguments: Any) ->
     )]
 
 
+async def handle_get_plant_measurements(fyta_client: FytaClient, arguments: Any) -> list[TextContent]:
+    """Handle get_plant_measurements tool call"""
+    plant_id = int(arguments["plant_id"])
+
+    try:
+        measurements = await fyta_client.get_plant_measurements(plant_id)
+
+        return [TextContent(
+            type="text",
+            text=json.dumps(measurements, indent=2)
+        )]
+    except Exception as e:
+        # If plant not found or no measurements available
+        return [TextContent(
+            type="text",
+            text=f"Could not retrieve measurements for plant {plant_id}: {str(e)}"
+        )]
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "get_all_plants": handle_get_all_plants,
     "get_plant_details": handle_get_plant_details,
     "get_plants_needing_attention": handle_get_plants_needing_attention,
     "get_garden_overview": handle_get_garden_overview,
+    "get_plant_measurements": handle_get_plant_measurements,
 }
 
 

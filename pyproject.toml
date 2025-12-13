@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fyta-mcp-server"
-version = "1.0.0"
+version = "1.1.0"
 description = "MCP server for FYTA plant sensor data"
 authors = [
     {name = "Juergen Schilling", email = "juergen_schilling@web.de"}

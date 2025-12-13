@@ -64,4 +64,22 @@ def get_tool_definitions() -> list[Tool]:
                 "required": []
             }
         ),
+        Tool(
+            name="get_plant_measurements",
+            description=(
+                "Get historical measurements and sensor data for a specific plant by ID. "
+                "Returns time-series data including temperature, light, moisture, and "
+                "nutrient measurements over time. Useful for tracking trends and plant health history."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "plant_id": {
+                        "type": "number",
+                        "description": "The ID of the plant to retrieve measurements for"
+                    }
+                },
+                "required": ["plant_id"]
+            }
+        ),
     ]
