@@ -1150,6 +1150,53 @@ async def handle_get_plant_events(fyta_client: FytaClient, arguments: Any) -> li
         all_events = []
 
         for plant in plants:
+            # === APPLY SMART STATUS EVALUATION ===
+            # Get measurements for smart threshold evaluation
+            measurements_week = None
+            try:
+                measurements_week = await fyta_client.get_plant_measurements(plant["id"], "week")
+            except Exception as e:
+                logger.warning(f"Could not get measurements for plant {plant['id']}: {e}")
+
+            # Enrich plant object with latest measurement values
+            enriched_plant_data = plant.copy()
+            if measurements_week:
+                measurements_list = extract_measurements_from_response(measurements_week)
+                if measurements_list:
+                    latest = measurements_list[-1]
+                    # Add actual values from measurements (plant object only has status codes)
+                    enriched_plant_data["temperature"] = latest.get("temperature")
+                    enriched_plant_data["light"] = latest.get("light")
+                    enriched_plant_data["soil_moisture"] = latest.get("soil_moisture")
+                    enriched_plant_data["soil_fertility"] = latest.get("soil_fertility")
+                    logger.info(f"Plant {plant['id']}: Enriched with measurements - temp={latest.get('temperature')}")
+
+            # Use smart status evaluation to fix FYTA's buggy status codes
+            smart_status = evaluate_plant_status(enriched_plant_data, measurements_week)
+
+            logger.info(f"Plant {plant['id']}: use_fyta_status={smart_status.get('use_fyta_status')}, method={smart_status.get('evaluation_method')}")
+
+            # Create final enriched plant object with smart status
+            enriched_plant = enriched_plant_data.copy()
+            if not smart_status.get("use_fyta_status", True):
+                # Override buggy FYTA status with smart evaluation
+                temp_data = smart_status.get("temperature") or {}
+                light_data = smart_status.get("light") or {}
+                moisture_data = smart_status.get("moisture") or {}
+                nutrients_data = smart_status.get("nutrients") or {}
+
+                old_temp = plant.get("temperature_status", 2)
+                new_temp = temp_data.get("status", old_temp)
+
+                logger.info(f"Plant {plant['id']}: Overriding temperature_status {old_temp} -> {new_temp}")
+
+                enriched_plant["temperature_status"] = new_temp
+                enriched_plant["light_status"] = light_data.get("status", plant.get("light_status", 2))
+                enriched_plant["moisture_status"] = moisture_data.get("status", plant.get("moisture_status", 2))
+                enriched_plant["salinity_status"] = nutrients_data.get("status", plant.get("salinity_status", 2))
+            else:
+                logger.info(f"Plant {plant['id']}: Using FYTA status (no thresholds available)")
+
             # For state comparison, we could use measurements from 1 hour ago
             # Since we don't have persistent state, we'll detect based on current state only
             # Status changes won't be detected without previous state
@@ -1157,9 +1204,9 @@ async def handle_get_plant_events(fyta_client: FytaClient, arguments: Any) -> li
 
             previous_state = None  # In a real implementation, this would be from a database/cache
 
-            # Detect events
+            # Detect events using enriched plant data with smart status
             plant_events = detect_all_events(
-                plant,
+                enriched_plant,
                 previous_state,
                 config={
                     "silence_threshold_minutes": 90,

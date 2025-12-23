@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-12-23
+
+### Fixed
+- **Critical**: Fixed `get_plant_events` using buggy FYTA status codes instead of smart evaluation
+  - Plant objects from `/user-plant` endpoint don't contain actual sensor values (only status codes)
+  - Now enriches plant data with actual values from measurements before evaluation
+  - Smart threshold evaluation now works correctly for event detection
+  - Fixes false "temperature extreme" alerts when temperature is actually optimal
+
+### Technical Details
+- Added measurement value enrichment to `handle_get_plant_events`
+- Plant object is now populated with `temperature`, `light`, `soil_moisture`, `soil_fertility` from latest measurement
+- Smart evaluation receives complete data and can correctly assess status
+- Added debug logging for threshold evaluation
+
 ## [1.2.0] - 2025-12-23
 
 ### Added
@@ -144,6 +159,7 @@ fyta-mcp-server/
 └── Docker files             # Container support
 ```
 
+[1.2.1]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.2.1
 [1.2.0]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.2.0
 [1.1.1]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.1.1
 [1.1.0]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.1.0

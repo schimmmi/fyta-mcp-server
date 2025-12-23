@@ -121,8 +121,16 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
     if not thresholds:
         thresholds = get_active_thresholds(plant)
 
+    # Debug logging
+    import logging
+    logger = logging.getLogger("fyta-mcp-server")
+    logger.info(f"Plant {plant.get('id')}: Thresholds found: {thresholds is not None}, temp={plant.get('temperature')}")
+    if thresholds:
+        logger.info(f"Plant {plant.get('id')}: temp_min_good={thresholds.get('temperature_min_good')}, temp_max_good={thresholds.get('temperature_max_good')}")
+
     if not thresholds:
         # No thresholds available, use FYTA status
+        logger.warning(f"No thresholds available for plant {plant.get('id')}, using FYTA status")
         result["use_fyta_status"] = True
         result["evaluation_method"] = "fyta"
         result["temperature"] = {
@@ -146,17 +154,30 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
     # Evaluate temperature
     temp = plant.get("temperature")
     if temp is not None:
+        temp_min_good = thresholds.get("temperature_min_good", 0)
+        temp_max_good = thresholds.get("temperature_max_good", 100)
+
         status_code, status_name = evaluate_metric_status(
             temp,
-            thresholds.get("temperature_min_good", 0),
-            thresholds.get("temperature_max_good", 100),
+            temp_min_good,
+            temp_max_good,
             thresholds.get("temperature_min_acceptable"),
             thresholds.get("temperature_max_acceptable")
         )
+
+        # Debug logging
+        import logging
+        logger = logging.getLogger("fyta-mcp-server")
+        logger.info(f"Temperature evaluation: value={temp}, min_good={temp_min_good}, max_good={temp_max_good}, result={status_code} ({status_name})")
+
         result["temperature"] = {
             "status": status_code,
             "status_name": status_name,
             "value": temp,
+            "thresholds": {
+                "min_good": temp_min_good,
+                "max_good": temp_max_good
+            },
             "fyta_status": plant.get("temperature_status"),
             "matches_fyta": status_code == plant.get("temperature_status", 2)
         }
