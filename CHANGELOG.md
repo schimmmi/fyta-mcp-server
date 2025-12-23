@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2025-12-23
+
+### Added
+- **Docker Support for API Wrappers**: Complete Docker deployment with docker-compose
+  - Dockerfile for all API wrapper variants (basic, webhooks, MQTT)
+  - docker-compose.yml with profiles for different deployment scenarios
+  - Mosquitto MQTT broker integration
+  - Automated cron containers for scheduled webhook/MQTT pushes
+  - Health checks and auto-restart policies
+- **Comprehensive Integration Examples**: Ready-to-use code for automation platforms
+  - n8n: Workflow JSON, configuration examples
+  - Home Assistant: configuration.yaml, automations.yaml, Lovelace dashboard
+  - IP-Symcon: PHP scripts for data fetching, reminders, WebFront visualization
+- **Integration Documentation**: Complete guides for automation platforms
+  - `docs/INTEGRATIONS.md`: Detailed integration guide for n8n, Home Assistant, IP-Symcon
+  - `examples/DOCKER.md`: Complete Docker deployment guide
+  - Platform-specific READMEs with setup instructions and troubleshooting
+
+### Changed
+- Improved documentation structure with practical examples
+- Added webhook format documentation for automation systems
+- Enhanced API wrapper with production-ready Gunicorn configuration
+
+### Technical Details
+- Docker Compose services: fyta-api (5000), fyta-api-webhooks (5001), fyta-api-mqtt (5002)
+- Mosquitto MQTT broker on ports 1883 (MQTT) and 9001 (WebSocket)
+- Gunicorn with 4 workers and 120s timeout
+- Bridge network for service communication
+- Profile-based deployment: default, webhooks, mqtt
+
 ## [1.2.1] - 2025-12-23
 
 ### Fixed
@@ -159,6 +189,7 @@ fyta-mcp-server/
 └── Docker files             # Container support
 ```
 
+[1.2.2]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.2.2
 [1.2.1]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.2.1
 [1.2.0]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.2.0
 [1.1.1]: https://github.com/schimmmi/fyta-mcp-server/releases/tag/v1.1.1
