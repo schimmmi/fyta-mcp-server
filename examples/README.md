@@ -34,7 +34,30 @@ examples/
 
 ### 2. Start API Wrapper
 
-All integrations require the API wrapper to be running:
+All integrations require the API wrapper to be running.
+
+#### Option A: Docker (Recommended) 🐳
+
+```bash
+cd examples
+
+# Copy environment template
+cp .env.example .env
+# Edit .env with your FYTA credentials
+
+# Start basic API wrapper
+docker-compose up -d fyta-api
+
+# Or with webhooks
+docker-compose --profile webhooks up -d
+
+# Or with MQTT
+docker-compose --profile mqtt up -d
+```
+
+**[→ Complete Docker Documentation](./DOCKER.md)**
+
+#### Option B: Python
 
 ```bash
 # Install dependencies

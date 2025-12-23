@@ -1,0 +1,15 @@
+# FYTA MCP Server API Wrapper Requirements
+
+# Core dependencies from main project
+httpx>=0.24.0
+python-dotenv>=1.0.0
+
+# API Wrapper dependencies
+flask>=3.0.0
+gunicorn>=21.2.0
+
+# Optional: MQTT support
+paho-mqtt>=1.6.1
+
+# Optional: Enhanced logging
+python-json-logger>=2.0.7

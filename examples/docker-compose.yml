@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # Basic API Wrapper
+  fyta-api:
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
+    container_name: fyta-api-wrapper
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FYTA_EMAIL=${FYTA_EMAIL}
+      - FYTA_PASSWORD=${FYTA_PASSWORD}
+    env_file:
+      - ../.env
+    command: gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 examples.api_wrapper:app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - fyta-network
+
+  # API Wrapper with Webhooks
+  fyta-api-webhooks:
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
+    container_name: fyta-api-webhooks
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    environment:
+      - FYTA_EMAIL=${FYTA_EMAIL}
+      - FYTA_PASSWORD=${FYTA_PASSWORD}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+    env_file:
+      - ../.env
+    command: gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 examples.api_wrapper_with_webhooks:app
+    networks:
+      - fyta-network
+    profiles:
+      - webhooks
+
+  # API Wrapper with MQTT
+  fyta-api-mqtt:
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
+    container_name: fyta-api-mqtt
+    restart: unless-stopped
+    ports:
+      - "5002:5000"
+    environment:
+      - FYTA_EMAIL=${FYTA_EMAIL}
+      - FYTA_PASSWORD=${FYTA_PASSWORD}
+      - MQTT_BROKER=${MQTT_BROKER:-mosquitto}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_USERNAME=${MQTT_USERNAME}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+      - MQTT_TOPIC_PREFIX=${MQTT_TOPIC_PREFIX:-homeassistant/sensor/fyta}
+    env_file:
+      - ../.env
+    command: gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 examples.api_wrapper_with_mqtt:app
+    depends_on:
+      - mosquitto
+    networks:
+      - fyta-network
+    profiles:
+      - mqtt
+
+  # Mosquitto MQTT Broker (for MQTT variant)
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: fyta-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-logs:/mosquitto/log
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - fyta-network
+    profiles:
+      - mqtt
+
+  # Cron container for scheduled webhook pushes
+  fyta-cron:
+    image: alpine:latest
+    container_name: fyta-cron
+    restart: unless-stopped
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        echo '*/5 * * * * curl -X POST http://fyta-api-webhooks:5000/api/events/push' > /etc/crontabs/root &&
+        crond -f -l 2
+      "
+    depends_on:
+      - fyta-api-webhooks
+    networks:
+      - fyta-network
+    profiles:
+      - webhooks
+
+  # Cron container for scheduled MQTT publishes
+  fyta-mqtt-cron:
+    image: alpine:latest
+    container_name: fyta-mqtt-cron
+    restart: unless-stopped
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        echo '*/5 * * * * curl -X POST http://fyta-api-mqtt:5000/api/events/mqtt' > /etc/crontabs/root &&
+        crond -f -l 2
+      "
+    depends_on:
+      - fyta-api-mqtt
+    networks:
+      - fyta-network
+    profiles:
+      - mqtt
+
+networks:
+  fyta-network:
+    driver: bridge
+
+volumes:
+  mosquitto-data:
+  mosquitto-logs:
