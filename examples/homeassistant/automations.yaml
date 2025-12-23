@@ -1,0 +1,162 @@
+# FYTA MCP Server - Home Assistant Automations
+# Add this to your automations.yaml or create via UI
+
+# Critical Plant Alert
+- id: fyta_critical_alert
+  alias: "FYTA: Critical Plant Alert"
+  description: "Send notification when critical plant issues detected"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.fyta_critical_alert
+      to: "on"
+  condition:
+    - condition: template
+      value_template: "{{ state_attr('sensor.fyta_events', 'summary')['critical'] | int > 0 }}"
+  action:
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "🚨 Plant Alert"
+        message: >
+          {% set events = state_attr('sensor.fyta_events', 'events') %}
+          {% set critical = events | selectattr('severity', 'equalto', 'critical') | list %}
+          {{ critical | length }} critical plant issues detected:
+          {% for event in critical %}
+          - {{ event.plant_name }}: {{ event.message }}
+          {% endfor %}
+        data:
+          priority: high
+          ttl: 0
+          tag: fyta_critical
+
+# Water Reminder
+- id: fyta_water_reminder
+  alias: "FYTA: Water Plant Reminder"
+  description: "Remind to water plants when moisture critical"
+  trigger:
+    - platform: state
+      entity_id: sensor.fyta_events
+  condition:
+    - condition: template
+      value_template: >
+        {% set events = state_attr('sensor.fyta_events', 'events') %}
+        {{ events | selectattr('event_type', 'equalto', 'moisture_critical') | list | length > 0 }}
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "💧 Time to Water Plants"
+        message: >
+          {% set events = state_attr('sensor.fyta_events', 'events') %}
+          {% set water_events = events | selectattr('event_type', 'equalto', 'moisture_critical') | list %}
+          The following plants need water:
+          {% for event in water_events %}
+          - {{ event.plant_name }}
+          {% endfor %}
+
+# Daily Plant Status Report
+- id: fyta_daily_report
+  alias: "FYTA: Daily Plant Status Report"
+  description: "Send daily summary of all plants"
+  trigger:
+    - platform: time
+      at: "09:00:00"
+  action:
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "🌱 Daily Plant Report"
+        message: >
+          {% set plants = state_attr('sensor.fyta_plants', 'plants') %}
+          {% if plants %}
+          Total plants: {{ plants | length }}
+
+          {% set needs_attention = plants | selectattr('temperature_status', 'ne', 2) | list + plants | selectattr('moisture_status', 'ne', 2) | list + plants | selectattr('light_status', 'ne', 2) | list %}
+          {% set needs_attention = needs_attention | unique | list %}
+          {% if needs_attention | length > 0 %}
+          Needs attention: {{ needs_attention | length }}
+          {% for plant in needs_attention %}
+          - {{ plant.nickname }}
+          {% endfor %}
+          {% else %}
+          All plants are healthy! ✅
+          {% endif %}
+          {% else %}
+          No plant data available
+          {% endif %}
+
+# Temperature Alert with AC Control
+- id: fyta_temperature_alert
+  alias: "FYTA: Temperature Too High - Adjust AC"
+  description: "Lower AC temperature when plants too hot"
+  trigger:
+    - platform: state
+      entity_id: sensor.fyta_events
+  condition:
+    - condition: template
+      value_template: >
+        {% set events = state_attr('sensor.fyta_events', 'events') %}
+        {{ events | selectattr('event_type', 'equalto', 'temperature_extreme') | list | length > 0 }}
+  action:
+    # Lower room temperature
+    - service: climate.set_temperature
+      data:
+        entity_id: climate.living_room
+        temperature: 20
+    # Notify user
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "🌡️ Plants Too Hot"
+        message: "Lowering room temperature to 20°C for plant safety"
+
+# Automatic Watering (if you have smart valve)
+- id: fyta_auto_water
+  alias: "FYTA: Automatic Watering"
+  description: "Automatically water plants when moisture critical"
+  trigger:
+    - platform: state
+      entity_id: sensor.fyta_events
+  condition:
+    - condition: template
+      value_template: >
+        {% set events = state_attr('sensor.fyta_events', 'events') %}
+        {{ events | selectattr('event_type', 'equalto', 'moisture_critical') | list | length > 0 }}
+    # Safety: Only during daytime
+    - condition: sun
+      after: sunrise
+      before: sunset
+  action:
+    # Open valve
+    - service: switch.turn_on
+      entity_id: switch.garden_valve_plant_1
+    # Wait 30 seconds
+    - delay: "00:00:30"
+    # Close valve
+    - service: switch.turn_off
+      entity_id: switch.garden_valve_plant_1
+    # Log action
+    - service: logbook.log
+      data:
+        name: "FYTA Auto-Water"
+        message: "Automatically watered plant due to critical moisture level"
+
+# Low Battery Alert
+- id: fyta_battery_alert
+  alias: "FYTA: Sensor Battery Low"
+  description: "Alert when sensor battery is low"
+  trigger:
+    - platform: state
+      entity_id: sensor.fyta_events
+  condition:
+    - condition: template
+      value_template: >
+        {% set events = state_attr('sensor.fyta_events', 'events') %}
+        {{ events | selectattr('event_type', 'equalto', 'battery_low') | list | length > 0 }}
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "🔋 FYTA Sensor Battery Low"
+        message: >
+          {% set events = state_attr('sensor.fyta_events', 'events') %}
+          {% set battery_events = events | selectattr('event_type', 'equalto', 'battery_low') | list %}
+          The following sensors need new batteries:
+          {% for event in battery_events %}
+          - {{ event.plant_name }}: {{ event.battery_level }}%
+          {% endfor %}

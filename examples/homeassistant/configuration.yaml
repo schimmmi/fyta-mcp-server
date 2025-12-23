@@ -1,0 +1,113 @@
+# FYTA MCP Server - Home Assistant Configuration
+# Add this to your Home Assistant configuration.yaml
+
+# REST Sensors for FYTA Integration
+sensor:
+  # All Plants Overview
+  - platform: rest
+    name: FYTA Plants
+    resource: http://localhost:5000/api/plants
+    method: GET
+    value_template: "{{ value_json.plants | length }}"
+    json_attributes:
+      - plants
+    scan_interval: 300  # Update every 5 minutes
+
+  # Plant Events
+  - platform: rest
+    name: FYTA Events
+    resource: http://localhost:5000/api/events
+    method: GET
+    value_template: "{{ value_json.event_count }}"
+    json_attributes:
+      - events
+      - summary
+      - webhook_format
+    scan_interval: 300
+
+# Template Sensors for Individual Plants
+template:
+  - sensor:
+      # Plant 1 - Example (change ID 108009 to your plant ID)
+      - name: "Plant Epipremnum Health"
+        unique_id: plant_108009_health
+        state: >
+          {% set plants = state_attr('sensor.fyta_plants', 'plants') %}
+          {% if plants %}
+            {% set plant = plants | selectattr('id', 'equalto', 108009) | first | default(none) %}
+            {% if plant %}
+              {% if plant.temperature_status == 2 and plant.moisture_status == 2 and plant.light_status == 2 %}
+                excellent
+              {% elif plant.temperature_status != 2 or plant.moisture_status != 2 or plant.light_status != 2 %}
+                needs_attention
+              {% else %}
+                unknown
+              {% endif %}
+            {% else %}
+              unavailable
+            {% endif %}
+          {% else %}
+            unavailable
+          {% endif %}
+        attributes:
+          temperature: >
+            {% set plants = state_attr('sensor.fyta_plants', 'plants') %}
+            {% if plants %}
+              {% set plant = plants | selectattr('id', 'equalto', 108009) | first | default(none) %}
+              {{ plant.temperature | default(0) if plant else 0 }}
+            {% else %}
+              0
+            {% endif %}
+          moisture: >
+            {% set plants = state_attr('sensor.fyta_plants', 'plants') %}
+            {% if plants %}
+              {% set plant = plants | selectattr('id', 'equalto', 108009) | first | default(none) %}
+              {{ plant.moisture | default(0) if plant else 0 }}
+            {% else %}
+              0
+            {% endif %}
+          light: >
+            {% set plants = state_attr('sensor.fyta_plants', 'plants') %}
+            {% if plants %}
+              {% set plant = plants | selectattr('id', 'equalto', 108009) | first | default(none) %}
+              {{ plant.light | default(0) if plant else 0 }}
+            {% else %}
+              0
+            {% endif %}
+          nutrients: >
+            {% set plants = state_attr('sensor.fyta_plants', 'plants') %}
+            {% if plants %}
+              {% set plant = plants | selectattr('id', 'equalto', 108009) | first | default(none) %}
+              {{ plant.salinity | default(0) if plant else 0 }}
+            {% else %}
+              0
+            {% endif %}
+
+  - binary_sensor:
+      # Critical Events Alert
+      - name: "FYTA Critical Alert"
+        unique_id: fyta_critical_alert
+        state: >
+          {% set summary = state_attr('sensor.fyta_events', 'summary') %}
+          {{ summary['critical'] | int > 0 if summary else false }}
+        device_class: problem
+        attributes:
+          critical_count: >
+            {% set summary = state_attr('sensor.fyta_events', 'summary') %}
+            {{ summary['critical'] | int if summary else 0 }}
+          warning_count: >
+            {% set summary = state_attr('sensor.fyta_events', 'summary') %}
+            {{ summary['warning'] | int if summary else 0 }}
+
+# Optional: MQTT Integration
+# Uncomment if using MQTT
+# mqtt:
+#   sensor:
+#     - name: "FYTA Event Count"
+#       state_topic: "homeassistant/sensor/fyta/events/count"
+#       unit_of_measurement: "events"
+#       icon: mdi:alert
+#     - name: "FYTA Critical Events"
+#       state_topic: "homeassistant/sensor/fyta/events/critical"
+#       unit_of_measurement: "events"
+#       icon: mdi:alert-circle

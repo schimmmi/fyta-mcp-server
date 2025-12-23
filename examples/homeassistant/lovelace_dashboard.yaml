@@ -1,0 +1,130 @@
+# FYTA MCP Server - Lovelace Dashboard
+# Add this to your Lovelace dashboard (ui-lovelace.yaml or via UI)
+
+type: vertical-stack
+title: 🌱 FYTA Plant Monitor
+cards:
+  # Summary Card
+  - type: entities
+    title: Overview
+    entities:
+      - entity: sensor.fyta_plants
+        name: Total Plants
+        icon: mdi:flower
+      - entity: sensor.fyta_events
+        name: Active Events
+        icon: mdi:alert
+      - entity: binary_sensor.fyta_critical_alert
+        name: Critical Alert
+
+  # Events Card (only shown when events exist)
+  - type: conditional
+    conditions:
+      - entity: sensor.fyta_events
+        state_not: "0"
+    card:
+      type: markdown
+      content: >
+        ## 🚨 Active Events
+
+        {% set events = state_attr('sensor.fyta_events', 'events') %}
+        {% for event in events %}
+        **{{ event.plant_name }}**
+        {{ event.message }}
+        *Severity: {{ event.severity }}*
+        *Actions:*
+        {% for action in event.suggested_actions %}
+        - {{ action }}
+        {% endfor %}
+
+        ---
+        {% endfor %}
+
+  # Individual Plant Card - Example
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.plant_epipremnum_health
+        name: Epipremnum
+        min: 0
+        max: 100
+        severity:
+          green: 70
+          yellow: 40
+          red: 0
+        needle: true
+
+  # Plant Details Card
+  - type: entities
+    title: Plant Details
+    entities:
+      - type: attribute
+        entity: sensor.plant_epipremnum_health
+        attribute: temperature
+        name: Temperature
+        icon: mdi:thermometer
+      - type: attribute
+        entity: sensor.plant_epipremnum_health
+        attribute: moisture
+        name: Moisture
+        icon: mdi:water-percent
+      - type: attribute
+        entity: sensor.plant_epipremnum_health
+        attribute: light
+        name: Light
+        icon: mdi:white-balance-sunny
+      - type: attribute
+        entity: sensor.plant_epipremnum_health
+        attribute: nutrients
+        name: Nutrients
+        icon: mdi:sprout
+
+  # History Graph
+  - type: history-graph
+    title: Plant Metrics (24h)
+    hours_to_show: 24
+    entities:
+      - entity: sensor.plant_epipremnum_health
+
+  # Action Buttons
+  - type: button
+    name: Refresh Data
+    icon: mdi:refresh
+    tap_action:
+      action: call-service
+      service: homeassistant.update_entity
+      service_data:
+        entity_id:
+          - sensor.fyta_plants
+          - sensor.fyta_events
+
+# Alternative: Compact Card Layout
+---
+type: custom:mushroom-entity-card
+entity: binary_sensor.fyta_critical_alert
+name: FYTA Alert
+icon: mdi:alert
+icon_color: red
+tap_action:
+  action: more-info
+
+# Alternative: Picture Elements Card (more visual)
+---
+type: picture-elements
+image: /local/plant_background.jpg
+elements:
+  - type: state-label
+    entity: sensor.fyta_events
+    prefix: "Events: "
+    style:
+      top: 10%
+      left: 10%
+      color: white
+      font-size: 20px
+  - type: state-icon
+    entity: binary_sensor.fyta_critical_alert
+    tap_action:
+      action: more-info
+    style:
+      top: 10%
+      right: 10%
