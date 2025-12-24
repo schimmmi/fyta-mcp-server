@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2025-12-24
+
+### Added
+- **Intelligent Watering Prediction**: New moisture trend analysis with predictive watering recommendations
+  - Analyzes 7-day moisture trends with linear regression
+  - Predicts "water in X days" based on consumption rate
+  - Shows moisture consumption (% per day/week)
+  - Integrated into `diagnose_plant` with full recommendations
+- Winter-aware fertilization thresholds (November-February)
+  - EC 0.08-0.8 considered optimal during dormancy
+  - Prevents false "critical low" alerts in winter
+  - More realistic recommendations for dormant plants
+- Status 4 (Critical) support in status_map for get_plant_details
+- Comprehensive debug logging for all metric evaluations
+
+### Fixed
+- **Complete Smart Evaluation Migration**: All tools now use smart evaluation instead of buggy FYTA status codes
+  - `get_plant_details`: Now enriches data and uses smart evaluation
+  - `get_all_plants`: Now enriches data and uses smart evaluation for all plants
+  - `diagnose_plant`: Added measurement enrichment before evaluation
+- Light evaluation: Fixed Light=0 handling (not critical, adjust min_acceptable=0)
+- Moisture trend analysis: Fixed field name handling (date_utc, soil_moisture variants)
+- Fertilization: Fixed winter threshold logic (critical_low: 0.05, min_optimal: 0.08)
+
+### Technical Details
+- Created `src/fyta_mcp_server/utils/watering.py`:
+  - `get_moisture_status()`: Evaluate current moisture with substrate-specific thresholds
+  - `analyze_moisture_trend()`: 7-day trend analysis with linear regression and prediction
+  - `get_watering_recommendation()`: Comprehensive watering advice
+- Enhanced `utils/thresholds.py`:
+  - Light evaluation with adjusted min_acceptable to prevent false critical alerts
+  - Added threshold info to all evaluation results
+  - Comprehensive debug logging for temperature, light, moisture, nutrients
+- Updated `utils/fertilization.py`:
+  - Season-aware thresholds with `consider_season` parameter
+  - Winter dormancy detection (months 11, 12, 1, 2)
+  - Adjusted thresholds: critical_low=0.05, min_optimal=0.08, max_optimal=0.8
+- Updated `handlers.py`:
+  - Watering analysis integration in diagnose_plant (lines 1151-1198)
+  - All tools now extract status codes correctly from evaluation result dicts
+  - Fixed status_map to include Status 4 (Critical)
+
 ## [1.2.3] - 2025-12-24
 
 ### Fixed
