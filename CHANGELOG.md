@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2025-12-24
+
+### Fixed
+- **Critical**: Fixed `get_plants_needing_attention` using buggy FYTA status codes instead of smart evaluation
+  - Same issue as v1.2.1 but for different tool - was still using direct FYTA status codes
+  - Now enriches plant data with actual measurements before smart evaluation
+  - Correctly extracts status codes from smart evaluation result dictionaries
+  - Added comprehensive debug logging for temperature, moisture, and nutrients evaluation
+  - Fixes false alerts (e.g., "temperature too high" when actually optimal)
+
+### Added
+- Debug logging for moisture and nutrients threshold evaluation
+- Threshold information in smart evaluation results for better debugging
+
+### Technical Details
+- Updated `handle_get_plants_needing_attention` to use same data enrichment pattern as `handle_get_plant_events`
+- Fixed status code extraction: `smart_status["temperature"]` returns dict with `{"status": code, ...}` not integer
+- Added `thresholds` field to moisture and nutrients evaluation results
+- Enhanced logging shows actual values, thresholds, and evaluation results for all metrics
+
 ## [1.2.2] - 2025-12-23
 
 ### Added

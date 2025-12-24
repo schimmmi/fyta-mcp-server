@@ -185,17 +185,27 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
     # Evaluate moisture
     moisture = plant.get("moisture") or plant.get("soil_moisture")
     if moisture is not None:
+        moisture_min_good = thresholds.get("moisture_min_good", 0)
+        moisture_max_good = thresholds.get("moisture_max_good", 100)
+
         status_code, status_name = evaluate_metric_status(
             moisture,
-            thresholds.get("moisture_min_good", 0),
-            thresholds.get("moisture_max_good", 100),
+            moisture_min_good,
+            moisture_max_good,
             thresholds.get("moisture_min_acceptable"),
             thresholds.get("moisture_max_acceptable")
         )
+
+        logger.info(f"Moisture evaluation: value={moisture}, min_good={moisture_min_good}, max_good={moisture_max_good}, result={status_code} ({status_name})")
+
         result["moisture"] = {
             "status": status_code,
             "status_name": status_name,
             "value": moisture,
+            "thresholds": {
+                "min_good": moisture_min_good,
+                "max_good": moisture_max_good
+            },
             "fyta_status": plant.get("moisture_status"),
             "matches_fyta": status_code == plant.get("moisture_status", 2)
         }
@@ -232,10 +242,17 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
             thresholds.get("salinity_min_acceptable"),
             thresholds.get("salinity_max_acceptable")
         )
+
+        logger.info(f"Nutrients evaluation: value={nutrients}, min_good={min_good}, max_good={max_good}, result={status_code} ({status_name}), adjusted={min_good != thresholds.get('salinity_min_good', 0)}")
+
         result["nutrients"] = {
             "status": status_code,
             "status_name": status_name,
             "value": nutrients,
+            "thresholds": {
+                "min_good": min_good,
+                "max_good": max_good
+            },
             "fyta_status": plant.get("salinity_status"),
             "matches_fyta": status_code == plant.get("salinity_status", 2),
             "adjusted_thresholds": min_good != thresholds.get("salinity_min_good", 0)

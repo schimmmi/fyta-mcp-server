@@ -185,25 +185,70 @@ async def handle_get_plant_details(fyta_client: FytaClient, arguments: Any) -> l
 
 
 async def handle_get_plants_needing_attention(fyta_client: FytaClient, arguments: Any) -> list[TextContent]:
-    """Handle get_plants_needing_attention tool call"""
+    """Handle get_plants_needing_attention tool call - uses smart evaluation instead of buggy FYTA status codes"""
     data = await fyta_client.get_plants()
     plants = data.get("plants", [])
 
     needs_attention = []
     for plant in plants:
+        # === APPLY SMART STATUS EVALUATION ===
+        # Get measurements for smart threshold evaluation
+        measurements_week = None
+        try:
+            measurements_week = await fyta_client.get_plant_measurements(plant["id"], "week")
+        except Exception as e:
+            logger.warning(f"Could not get measurements for plant {plant['id']}: {e}")
+            continue  # Skip plant if we can't get measurements
+
+        # Enrich plant object with latest measurement values (plant object only has status codes)
+        enriched_plant_data = plant.copy()
+        if measurements_week:
+            measurements_list = extract_measurements_from_response(measurements_week)
+            if measurements_list:
+                latest = measurements_list[-1]
+                # Add actual values from measurements
+                enriched_plant_data["temperature"] = latest.get("temperature")
+                enriched_plant_data["light"] = latest.get("light")
+                enriched_plant_data["soil_moisture"] = latest.get("soil_moisture")
+                enriched_plant_data["soil_fertility"] = latest.get("soil_fertility")
+
+        # Use smart status evaluation to fix FYTA's buggy status codes
+        smart_status = evaluate_plant_status(enriched_plant_data, measurements_week)
+
+        # Build issues list from smart evaluation
+        # Note: smart_status returns dicts with {"status": code, "value": value, ...}
         issues = []
-        if plant["temperature_status"] != 2:
-            status_desc = "too low" if plant["temperature_status"] == 1 else "too high"
-            issues.append(f"Temperature {status_desc}")
-        if plant["light_status"] != 2:
-            status_desc = "too low" if plant["light_status"] == 1 else "too high"
-            issues.append(f"Light {status_desc}")
-        if plant["moisture_status"] != 2:
-            status_desc = "too low" if plant["moisture_status"] == 1 else "too high"
-            issues.append(f"Moisture {status_desc}")
-        if plant["salinity_status"] != 2:
-            status_desc = "too low" if plant["salinity_status"] == 1 else "too high"
-            issues.append(f"Nutrients {status_desc}")
+        temp_status = smart_status.get("temperature")
+        if temp_status and isinstance(temp_status, dict):
+            status_code = temp_status.get("status")
+            if status_code == 1:
+                issues.append("Temperature too low")
+            elif status_code == 3:
+                issues.append("Temperature too high")
+
+        light_status = smart_status.get("light")
+        if light_status and isinstance(light_status, dict):
+            status_code = light_status.get("status")
+            if status_code == 1:
+                issues.append("Light too low")
+            elif status_code == 3:
+                issues.append("Light too high")
+
+        moisture_status = smart_status.get("moisture")
+        if moisture_status and isinstance(moisture_status, dict):
+            status_code = moisture_status.get("status")
+            if status_code == 1:
+                issues.append("Moisture too low")
+            elif status_code == 3:
+                issues.append("Moisture too high")
+
+        nutrients_status = smart_status.get("nutrients")
+        if nutrients_status and isinstance(nutrients_status, dict):
+            status_code = nutrients_status.get("status")
+            if status_code == 1:
+                issues.append("Nutrients too low")
+            elif status_code == 3:
+                issues.append("Nutrients too high")
 
         if issues:
             needs_attention.append({
