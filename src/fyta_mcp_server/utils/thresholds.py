@@ -261,20 +261,40 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
     # Evaluate light
     light = plant.get("light")
     if light is not None:
+        light_min_good = thresholds.get("light_min_good", 0)
+        light_max_good = thresholds.get("light_max_good", 1000)
+        light_min_acceptable = thresholds.get("light_min_acceptable")
+
+        # For light, don't treat low values as "critical" - just "low"
+        # Low light is concerning but rarely critical for plant survival
+        # Set min_acceptable to 0 to avoid critical status
+        if light_min_acceptable is None or light_min_acceptable > 0:
+            light_min_acceptable = 0
+
         status_code, status_name = evaluate_metric_status(
             light,
-            thresholds.get("light_min_good", 0),
-            thresholds.get("light_max_good", 1000),
-            thresholds.get("light_min_acceptable"),
+            light_min_good,
+            light_max_good,
+            light_min_acceptable,
             thresholds.get("light_max_acceptable")
         )
+
+        logger.info(f"Light evaluation: value={light}, min_good={light_min_good}, max_good={light_max_good}, min_acceptable={light_min_acceptable}, result={status_code} ({status_name})")
+
         result["light"] = {
             "status": status_code,
             "status_name": status_name,
             "value": light,
+            "thresholds": {
+                "min_good": light_min_good,
+                "max_good": light_max_good,
+                "min_acceptable": light_min_acceptable
+            },
             "fyta_status": plant.get("light_status"),
             "matches_fyta": status_code == plant.get("light_status", 2)
         }
+    else:
+        logger.warning(f"Plant {plant.get('id')}: Light value is None, skipping light evaluation")
 
     return result
 

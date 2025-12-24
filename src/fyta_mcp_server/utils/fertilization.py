@@ -22,13 +22,14 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
 
-def get_ec_status(ec_value: float, substrate_type: Optional[str] = None) -> Dict:
+def get_ec_status(ec_value: float, substrate_type: Optional[str] = None, consider_season: bool = True) -> Dict:
     """
     Evaluate EC/soil_fertility status with substrate-specific thresholds.
 
     Args:
         ec_value: Current EC value (mS/cm or equivalent)
         substrate_type: Type of substrate (organic, mineral, lechuza_pon, hydroponic, etc.)
+        consider_season: If True, adjusts critical thresholds for winter dormancy (default: True)
 
     Returns:
         Dict with status, severity, and recommendation
@@ -48,6 +49,18 @@ def get_ec_status(ec_value: float, substrate_type: Optional[str] = None) -> Dict
     # Critical thresholds (substrate-independent)
     critical_low = 0.3
     critical_high = 1.5
+
+    # Adjust for winter dormancy (November-February in Northern Hemisphere)
+    if consider_season:
+        current_month = datetime.now().month
+        is_winter = current_month in [11, 12, 1, 2]
+
+        if is_winter:
+            # In winter, plants consume fewer nutrients during dormancy
+            # Much more lenient thresholds - 0.1-0.3 is normal in winter
+            critical_low = 0.05  # Only truly starved plants
+            min_optimal = 0.08   # Very low EC is acceptable in winter dormancy
+            max_optimal = max(max_optimal, 0.8)  # Keep upper bound reasonable
 
     if ec_value < critical_low:
         return {

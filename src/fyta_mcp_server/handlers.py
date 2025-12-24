@@ -51,6 +51,11 @@ from .utils.fertilization import (
     analyze_ec_trend,
     get_fertilization_recommendation
 )
+from .utils.watering import (
+    get_moisture_status,
+    analyze_moisture_trend,
+    get_watering_recommendation
+)
 from .utils.sensor_info import (
     get_sensor_info,
     check_light_capability,
@@ -81,6 +86,41 @@ async def handle_get_all_plants(fyta_client: FytaClient, arguments: Any) -> list
     # Enrich plants with LLM-friendly data
     enriched_plants = []
     for plant in plants:
+        # === APPLY SMART STATUS EVALUATION ===
+        # Get measurements for smart threshold evaluation
+        measurements_week = None
+        try:
+            measurements_week = await fyta_client.get_plant_measurements(plant["id"], "week")
+        except Exception as e:
+            logger.warning(f"Could not get measurements for plant {plant['id']}: {e}")
+
+        # Enrich plant object with latest measurement values
+        enriched_plant_data = plant.copy()
+        if measurements_week:
+            measurements_list = extract_measurements_from_response(measurements_week)
+            if measurements_list:
+                latest = measurements_list[-1]
+                enriched_plant_data["temperature"] = latest.get("temperature")
+                enriched_plant_data["light"] = latest.get("light")
+                enriched_plant_data["soil_moisture"] = latest.get("soil_moisture")
+                enriched_plant_data["soil_fertility"] = latest.get("soil_fertility")
+
+        # Use smart status evaluation to fix FYTA's buggy status codes
+        smart_status = evaluate_plant_status(enriched_plant_data, measurements_week)
+
+        # Extract status codes from smart evaluation
+        temp_status = smart_status.get("temperature", {})
+        temp_status_code = temp_status.get("status", 2) if isinstance(temp_status, dict) else plant.get("temperature_status", 2)
+
+        light_status = smart_status.get("light", {})
+        light_status_code = light_status.get("status", 2) if isinstance(light_status, dict) else plant.get("light_status", 2)
+
+        moisture_status = smart_status.get("moisture", {})
+        moisture_status_code = moisture_status.get("status", 2) if isinstance(moisture_status, dict) else plant.get("moisture_status", 2)
+
+        nutrients_status = smart_status.get("nutrients", {})
+        nutrients_status_code = nutrients_status.get("status", 2) if isinstance(nutrients_status, dict) else plant.get("salinity_status", 2)
+
         # Calculate minutes since last update
         last_update_minutes = None
         if plant.get("received_data_at"):
@@ -92,18 +132,13 @@ async def handle_get_all_plants(fyta_client: FytaClient, arguments: Any) -> list
             except Exception:
                 pass
 
-        # Determine overall status
-        statuses = [
-            plant.get("temperature_status", 2),
-            plant.get("light_status", 2),
-            plant.get("moisture_status", 2),
-            plant.get("salinity_status", 2)
-        ]
+        # Determine overall status using smart evaluation results
+        statuses = [temp_status_code, light_status_code, moisture_status_code, nutrients_status_code]
 
         if all(s == 2 for s in statuses):
             overall_status = "good"
         elif any(s == 1 or s == 3 for s in statuses):
-            if plant.get("moisture_status") == 1 or plant.get("temperature_status") == 3:
+            if moisture_status_code == 1 or temp_status_code == 3:
                 overall_status = "bad"
             else:
                 overall_status = "ok"
@@ -123,10 +158,10 @@ async def handle_get_all_plants(fyta_client: FytaClient, arguments: Any) -> list
             "overallStatus": overall_status,
             "lastUpdateMinutesAgo": last_update_minutes,
             "sensorStatus": {
-                "temperature": plant.get("temperature_status"),
-                "light": plant.get("light_status"),
-                "moisture": plant.get("moisture_status"),
-                "nutrients": plant.get("salinity_status")
+                "temperature": temp_status_code,
+                "light": light_status_code,
+                "moisture": moisture_status_code,
+                "nutrients": nutrients_status_code
             },
             "_raw": plant
         }
@@ -143,14 +178,49 @@ async def handle_get_all_plants(fyta_client: FytaClient, arguments: Any) -> list
 
 
 async def handle_get_plant_details(fyta_client: FytaClient, arguments: Any) -> list[TextContent]:
-    """Handle get_plant_details tool call"""
+    """Handle get_plant_details tool call - uses smart evaluation instead of buggy FYTA status codes"""
     plant_id = int(arguments["plant_id"])
     plant = await fyta_client.get_plant_by_id(plant_id)
 
     if not plant:
         return [TextContent(type="text", text=f"Plant with ID {plant_id} not found")]
 
-    status_map = {1: "Low", 2: "Optimal", 3: "High"}
+    # === APPLY SMART STATUS EVALUATION ===
+    # Get measurements for smart threshold evaluation
+    measurements_week = None
+    try:
+        measurements_week = await fyta_client.get_plant_measurements(plant_id, "week")
+    except Exception as e:
+        logger.warning(f"Could not get measurements for plant {plant_id}: {e}")
+
+    # Enrich plant object with latest measurement values
+    enriched_plant_data = plant.copy()
+    if measurements_week:
+        measurements_list = extract_measurements_from_response(measurements_week)
+        if measurements_list:
+            latest = measurements_list[-1]
+            enriched_plant_data["temperature"] = latest.get("temperature")
+            enriched_plant_data["light"] = latest.get("light")
+            enriched_plant_data["soil_moisture"] = latest.get("soil_moisture")
+            enriched_plant_data["soil_fertility"] = latest.get("soil_fertility")
+
+    # Use smart status evaluation to fix FYTA's buggy status codes
+    smart_status = evaluate_plant_status(enriched_plant_data, measurements_week)
+
+    # Extract status codes from smart evaluation
+    status_map = {1: "Low", 2: "Optimal", 3: "High", 4: "Critical"}
+
+    temp_status = smart_status.get("temperature", {})
+    temp_status_code = temp_status.get("status", 2) if isinstance(temp_status, dict) else plant.get("temperature_status", 2)
+
+    light_status = smart_status.get("light", {})
+    light_status_code = light_status.get("status", 2) if isinstance(light_status, dict) else plant.get("light_status", 2)
+
+    moisture_status = smart_status.get("moisture", {})
+    moisture_status_code = moisture_status.get("status", 2) if isinstance(moisture_status, dict) else plant.get("moisture_status", 2)
+
+    nutrients_status = smart_status.get("nutrients", {})
+    nutrients_status_code = nutrients_status.get("status", 2) if isinstance(nutrients_status, dict) else plant.get("salinity_status", 2)
 
     formatted_plant = {
         "id": plant["id"],
@@ -159,15 +229,15 @@ async def handle_get_plant_details(fyta_client: FytaClient, arguments: Any) -> l
         "overall_status": plant["status"],
         "sensor_status": {
             "temperature": {
-                "status": status_map.get(plant["temperature_status"], "Unknown"),
+                "status": status_map.get(temp_status_code, "Unknown"),
                 "optimal_hours": plant["temperature_optimal_hours"]
             },
             "light": {
-                "status": status_map.get(plant["light_status"], "Unknown"),
+                "status": status_map.get(light_status_code, "Unknown"),
                 "optimal_hours": plant["light_optimal_hours"]
             },
-            "moisture": status_map.get(plant["moisture_status"], "Unknown"),
-            "nutrients": status_map.get(plant["salinity_status"], "Unknown")
+            "moisture": status_map.get(moisture_status_code, "Unknown"),
+            "nutrients": status_map.get(nutrients_status_code, "Unknown")
         },
         "sensor_info": plant.get("sensor", {}),
         "last_data_received": plant.get("received_data_at"),
@@ -723,8 +793,19 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
             pass
 
         # === SMART STATUS EVALUATION ===
+        # Enrich plant object with latest measurement values (plant object only has status codes)
+        enriched_plant_data = plant.copy()
+        if measurements_week:
+            measurements_list = extract_measurements_from_response(measurements_week)
+            if measurements_list:
+                latest = measurements_list[-1]
+                enriched_plant_data["temperature"] = latest.get("temperature")
+                enriched_plant_data["light"] = latest.get("light")
+                enriched_plant_data["soil_moisture"] = latest.get("soil_moisture")
+                enriched_plant_data["soil_fertility"] = latest.get("soil_fertility")
+
         # Use our intelligent evaluation instead of trusting FYTA's inconsistent status codes
-        smart_status = evaluate_plant_status(plant, measurements_week)
+        smart_status = evaluate_plant_status(enriched_plant_data, measurements_week)
 
         # === ANALYZE CURRENT STATUS ===
         issues = []
@@ -1066,6 +1147,55 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
                 import traceback
                 logger.error(traceback.format_exc())
                 # Don't fail the whole diagnosis if fertilization analysis fails
+
+        # === WATERING ANALYSIS ===
+        current_moisture = None
+        if measurements_week:
+            measurements_list = extract_measurements_from_response(measurements_week)
+            if measurements_list:
+                # Get most recent measurement
+                latest_measurement = measurements_list[-1]
+                current_moisture = latest_measurement.get("soil_moisture")
+
+        if current_moisture is not None and measurements_list:
+            try:
+                logger.info("Starting watering analysis...")
+                # Get plant context for substrate info
+                context = context_store.get_context(plant_id)
+                substrate_type = context.get("substrate_type") if context else None
+
+                # Analyze moisture trend
+                moisture_trend = analyze_moisture_trend(measurements_list, days=7)
+                logger.info(f"Moisture trend analyzed: {moisture_trend.get('analyzed', False)}")
+
+                # Get care history for watering frequency
+                care_history = care_store.get_plant_history(plant_id, days=30, action_type="watering")
+
+                # Get last watering date from care history
+                last_watered = None
+                if care_history:
+                    last_watered = care_history[0].get("timestamp")
+
+                # Generate recommendation
+                watering_recommendation = get_watering_recommendation(
+                    current_moisture=current_moisture,
+                    moisture_trend=moisture_trend,
+                    substrate_type=substrate_type,
+                    last_watered=last_watered
+                )
+
+                logger.info(f"Watering recommendation generated: {watering_recommendation is not None}")
+
+                result["watering"] = {
+                    "recommendation": watering_recommendation,
+                    "moisture_trend": moisture_trend if moisture_trend.get("analyzed") else None
+                }
+
+            except Exception as e:
+                logger.error(f"Error generating watering recommendation: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                # Don't fail the whole diagnosis if watering analysis fails
 
         return [TextContent(
             type="text",
