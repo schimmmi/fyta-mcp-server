@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2025-12-30
+
+### Fixed
+- **Critical Bug: Incorrect measurement values in diagnose_plant**
+  - FYTA API returns measurements in **arbitrary order, not chronological**
+  - Old code used `measurements_list[-1]` which gave outdated values
+  - Example: Showed 19°C/34% moisture instead of actual 28°C/67%
+  - Fixed by sorting measurements by timestamp before extracting latest value
+  - Added `get_latest_measurement()` helper function used across all handlers
+  - Affects: `diagnose_plant`, `get_plants_needing_attention`, `get_plant_events`, watering/fertilization analysis
+
+- **Stale values from Plant object**
+  - Plant object from FYTA API contains outdated/unreliable measurement values
+  - Now using **only** measurements endpoint for actual values
+  - Created clean enriched_plant_data dict without copying stale values
+  - Plant object now only used for metadata and status codes
+
+- **Dynamic severity calculation**
+  - Old: Temperature 1°C over threshold = "critical" ❌
+  - New: Severity based on actual deviation percentage ✅
+  - 26°C at 25°C threshold: +4% = "low" (was "critical")
+  - 28°C at 25°C threshold: +12% = "moderate" (was "critical")
+  - 35°C at 25°C threshold: +40% = "high"
+  - Added `calculate_severity()` function with metric-specific logic
+  - Moisture low is treated most critical (dehydration risk)
+  - Temperature/nutrients have more nuanced severity levels
+
+### Changed
+- Health assessment now much more realistic
+  - Example: Plant at 26-28°C now rated "good"/"fair" instead of "critical"
+  - Severity reflects actual risk to plant health, not arbitrary thresholds
+  - "critical" reserved for true emergencies (e.g., moisture <15%)
+
+### Technical Details
+- New helper function: `get_latest_measurement(measurements_list)`
+  - Sorts by timestamp (date_utc, timestamp, or measured_at)
+  - Returns measurement with newest timestamp
+  - Used in all 6 locations that extract latest measurement
+- New helper function: `calculate_severity(value, status_code, thresholds, metric_name)`
+  - Calculates deviation percentage from optimal range
+  - Metric-specific severity rules (moisture, temperature, nutrients)
+  - Returns: "info", "low", "moderate", "high", or "critical"
+- Enhanced logging in diagnose_plant:
+  - Shows measurement count, keys, and extracted values
+  - Logs timestamp of latest measurement used
+  - Helps debug measurement data issues
+
 ## [1.2.4] - 2025-12-24
 
 ### Added

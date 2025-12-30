@@ -153,6 +153,7 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
 
     # Evaluate temperature
     temp = plant.get("temperature")
+    logger.info(f"Plant {plant.get('id')} - evaluate_plant_status: temp from plant dict = {temp}")
     if temp is not None:
         temp_min_good = thresholds.get("temperature_min_good", 0)
         temp_max_good = thresholds.get("temperature_max_good", 100)
@@ -184,6 +185,7 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
 
     # Evaluate moisture
     moisture = plant.get("moisture") or plant.get("soil_moisture")
+    logger.info(f"Plant {plant.get('id')} - evaluate_plant_status: moisture={plant.get('moisture')}, soil_moisture={plant.get('soil_moisture')}, using={moisture}")
     if moisture is not None:
         moisture_min_good = thresholds.get("moisture_min_good", 0)
         moisture_max_good = thresholds.get("moisture_max_good", 100)

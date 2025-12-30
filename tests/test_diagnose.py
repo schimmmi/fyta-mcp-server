@@ -50,6 +50,25 @@ async def test_diagnose():
                 print(f"DIAGNOSING: {plant['nickname']} (ID: {plant['id']})")
                 print("=" * 80)
 
+                # First, let's check the raw plant data
+                print("\n🔍 RAW PLANT DATA:")
+                print(f"  plant.get('temperature'): {plant.get('temperature')}")
+                print(f"  plant.get('temperature_status'): {plant.get('temperature_status')}")
+                print(f"  plant.get('moisture'): {plant.get('moisture')}")
+                print(f"  plant.get('soil_moisture'): {plant.get('soil_moisture')}")
+
+                # Get measurements to see raw data
+                measurements = await client.get_plant_measurements(plant['id'], 'week')
+                if measurements and 'measurements' in measurements and measurements['measurements']:
+                    latest = measurements['measurements'][-1]
+                    print("\n🔍 RAW MEASUREMENT DATA (latest):")
+                    print(f"  Keys: {list(latest.keys())}")
+                    print(f"  temperature: {latest.get('temperature')}")
+                    print(f"  moisture: {latest.get('moisture')}")
+                    print(f"  soil_moisture: {latest.get('soil_moisture')}")
+                    print(f"  light: {latest.get('light')}")
+                print()
+
                 # Call diagnose handler
                 result = await handle_diagnose_plant(
                     client,
