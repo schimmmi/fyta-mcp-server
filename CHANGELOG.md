@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.6] - 2026-01-04
+
+### Fixed
+- **Critical Bug: soil_fertility=0 treated as None**
+  - Python's `0 or None` evaluates to `None` (0 is falsy)
+  - Sensors reporting EC=0 had `nutrients=None` instead of `nutrients=0`
+  - Affected plants with low/zero EC readings (winter dormancy, sensor issues)
+  - Fixed in 6 locations using explicit `is not None` checks
+  - Now correctly processes EC=0 values
+
+- **Sensor anomaly detection for nutrients**
+  - FYTA API provides `soil_fertility_anomaly` and `soil_moisture_anomaly` flags
+  - These flags indicate sensor malfunction or poor soil contact
+  - Now transfers anomaly flags from measurements to plant data
+  - `evaluate_plant_status()` sets status=4 ("sensor_error") when anomaly detected
+  - `diagnose_plant` shows clear "Nutrient sensor reports anomaly" warning
+
+- **Smart evaluation was ignored in diagnose_plant**
+  - Bug: `smart_status.get("use_fyta_status", True)` defaulted to True
+  - Result: FYTA's buggy status codes used instead of smart evaluation
+  - Fixed: Changed default to `False` - now uses smart evaluation when thresholds exist
+  - Smart evaluation now properly detects sensor errors and anomalies
+
+- **KeyError for optimal_hours in sensor error case**
+  - Sensor error issues missing `optimal_hours` field caused crash
+  - Added `optimal_hours: None` to sensor_error case
+  - Changed access from `issue["optimal_hours"]` to safe `issue.get("optimal_hours")`
+
+### Added
+- Sensor anomaly flags now transferred from measurements:
+  - `soil_fertility_anomaly` (EC sensor malfunction/poor contact)
+  - `soil_moisture_anomaly` (moisture sensor issues)
+- Enhanced logging shows anomaly flags in measurement extraction
+- Status code 4 ("sensor_error") for unreliable sensor readings
+- Clear explanations: "Check sensor placement and clean electrodes"
+
+### Changed
+- All 6 measurement extraction locations now handle EC=0 correctly
+- Sensor error treated as high severity issue
+- `get_status_description()` supports "sensor_error" status_name
+
+### Technical Details
+- Fixed locations: lines 115, 226, 314, 978, 1346, 1594 in handlers.py
+- Pattern changed from:
+  ```python
+  nutrients = latest.get("soil_fertility") or latest.get("salinity")
+  ```
+  To:
+  ```python
+  nutrients = latest.get("soil_fertility") if latest.get("soil_fertility") is not None else latest.get("salinity")
+  ```
+- Added anomaly detection in `thresholds.py:evaluate_plant_status()`
+- Enhanced `diagnose_plant` to show sensor errors as actionable issues
+
 ## [1.2.5] - 2025-12-30
 
 ### Fixed

@@ -112,7 +112,15 @@ async def handle_get_all_plants(fyta_client: FytaClient, arguments: Any) -> list
                 enriched_plant_data["temperature"] = latest.get("temperature")
                 enriched_plant_data["light"] = latest.get("light")
                 enriched_plant_data["soil_moisture"] = latest.get("soil_moisture") or latest.get("moisture")
-                enriched_plant_data["soil_fertility"] = latest.get("soil_fertility") or latest.get("salinity")
+
+                # Handle soil_fertility - 0 is valid, so check explicitly!
+                soil_fertility = latest.get("soil_fertility") if latest.get("soil_fertility") is not None else latest.get("salinity")
+                if soil_fertility is not None:
+                    enriched_plant_data["soil_fertility"] = soil_fertility
+
+                # Transfer anomaly flags from sensor
+                enriched_plant_data["soil_fertility_anomaly"] = latest.get("soil_fertility_anomaly", False)
+                enriched_plant_data["soil_moisture_anomaly"] = latest.get("soil_moisture_anomaly", False)
 
         # Use smart status evaluation to fix FYTA's buggy status codes
         smart_status = evaluate_plant_status(enriched_plant_data, measurements_week)
@@ -220,7 +228,14 @@ async def handle_get_plant_details(fyta_client: FytaClient, arguments: Any) -> l
             enriched_plant_data["temperature"] = latest.get("temperature")
             enriched_plant_data["light"] = latest.get("light")
             enriched_plant_data["soil_moisture"] = latest.get("soil_moisture") or latest.get("moisture")
-            enriched_plant_data["soil_fertility"] = latest.get("soil_fertility") or latest.get("salinity")
+
+            # Handle soil_fertility - 0 is valid, so check explicitly!
+            soil_fertility = latest.get("soil_fertility") if latest.get("soil_fertility") is not None else latest.get("salinity")
+            if soil_fertility is not None:
+                enriched_plant_data["soil_fertility"] = soil_fertility
+
+            enriched_plant_data["soil_fertility_anomaly"] = latest.get("soil_fertility_anomaly", False)
+            enriched_plant_data["soil_moisture_anomaly"] = latest.get("soil_moisture_anomaly", False)
 
     # Use smart status evaluation to fix FYTA's buggy status codes
     smart_status = evaluate_plant_status(enriched_plant_data, measurements_week)
@@ -306,7 +321,14 @@ async def handle_get_plants_needing_attention(fyta_client: FytaClient, arguments
                 enriched_plant_data["temperature"] = latest.get("temperature")
                 enriched_plant_data["light"] = latest.get("light")
                 enriched_plant_data["soil_moisture"] = latest.get("soil_moisture") or latest.get("moisture")
-                enriched_plant_data["soil_fertility"] = latest.get("soil_fertility") or latest.get("salinity")
+
+                # Handle soil_fertility - 0 is valid, so check explicitly!
+                soil_fertility = latest.get("soil_fertility") if latest.get("soil_fertility") is not None else latest.get("salinity")
+                if soil_fertility is not None:
+                    enriched_plant_data["soil_fertility"] = soil_fertility
+
+                enriched_plant_data["soil_fertility_anomaly"] = latest.get("soil_fertility_anomaly", False)
+                enriched_plant_data["soil_moisture_anomaly"] = latest.get("soil_moisture_anomaly", False)
 
         # Use smart status evaluation to fix FYTA's buggy status codes
         smart_status = evaluate_plant_status(enriched_plant_data, measurements_week)
@@ -952,7 +974,9 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
                 logger.info(f"Plant {plant_id} - Latest measurement keys: {list(latest.keys())}")
                 logger.info(f"Plant {plant_id} - Latest measurement values: temp={latest.get('temperature')}, "
                            f"moisture={latest.get('moisture')}, soil_moisture={latest.get('soil_moisture')}, "
-                           f"salinity={latest.get('salinity')}, soil_fertility={latest.get('soil_fertility')}")
+                           f"salinity={latest.get('salinity')}, soil_fertility={latest.get('soil_fertility')}, "
+                           f"soil_fertility_anomaly={latest.get('soil_fertility_anomaly')}, "
+                           f"soil_moisture_anomaly={latest.get('soil_moisture_anomaly')}")
 
                 # Extract actual measurement values - ONLY add if they exist
                 if latest.get("temperature") is not None:
@@ -964,15 +988,26 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
                 if moisture_val is not None:
                     enriched_plant_data["soil_moisture"] = moisture_val
                     enriched_plant_data["moisture"] = moisture_val  # Set both for compatibility
+                enriched_plant_data["soil_moisture_anomaly"] = latest.get("soil_moisture_anomaly", False)
 
-                nutrients_val = latest.get("soil_fertility") or latest.get("salinity")
+                # Handle soil_fertility/salinity - must check explicitly since 0 is valid!
+                if latest.get("soil_fertility") is not None:
+                    nutrients_val = latest.get("soil_fertility")
+                elif latest.get("salinity") is not None:
+                    nutrients_val = latest.get("salinity")
+                else:
+                    nutrients_val = None
+
                 if nutrients_val is not None:
                     enriched_plant_data["soil_fertility"] = nutrients_val
                     enriched_plant_data["salinity"] = nutrients_val  # Set both for compatibility
+                enriched_plant_data["soil_fertility_anomaly"] = latest.get("soil_fertility_anomaly", False)
 
                 logger.info(f"Plant {plant_id} - Enriched data after extraction: temp={enriched_plant_data.get('temperature')}, "
                            f"moisture={enriched_plant_data.get('soil_moisture')}, "
-                           f"nutrients={enriched_plant_data.get('soil_fertility')}")
+                           f"nutrients={enriched_plant_data.get('soil_fertility')}, "
+                           f"soil_fertility_anomaly={enriched_plant_data.get('soil_fertility_anomaly')}, "
+                           f"soil_moisture_anomaly={enriched_plant_data.get('soil_moisture_anomaly')}")
         else:
             logger.warning(f"Plant {plant_id} - No measurements_week data available!")
 
@@ -983,7 +1018,9 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
         issues = []
 
         # Use smart status if available, otherwise fallback to FYTA status
-        if smart_status.get("use_fyta_status", True):
+        # Note: smart_status defaults to use_fyta_status=False when thresholds exist
+        if smart_status.get("use_fyta_status", False):
+            # Fallback to FYTA status only if explicitly requested (no thresholds available)
             status_details = {
                 "temperature": plant.get("temperature_status", 2),
                 "light": plant.get("light_status", 2),
@@ -1009,7 +1046,7 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
         light_capability = check_light_capability(plant)
 
         # Status explanations with severity
-        status_names = {1: "low", 2: "optimal", 3: "high"}
+        status_names = {1: "low", 2: "optimal", 3: "high", 4: "sensor_error"}
 
         # Temperature analysis
         if status_details["temperature"] != 2:
@@ -1088,24 +1125,38 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
 
         # Nutrients analysis
         if status_details["nutrients"] != 2:
-            # Calculate dynamic severity
-            nutrients_value = nutrients_data.get("value") if nutrients_data else None
-            nutrients_thresholds = nutrients_data.get("thresholds", {}) if nutrients_data else {}
-
-            if nutrients_value is not None and nutrients_thresholds:
-                severity = calculate_severity(nutrients_value, status_details["nutrients"], nutrients_thresholds, "nutrients")
+            # Check for sensor error first
+            if status_details["nutrients"] == 4:
+                # Sensor anomaly detected
+                nutrients_anomaly = nutrients_data.get("anomaly", False) if nutrients_data else False
+                issues.append({
+                    "parameter": "nutrients",
+                    "status": "sensor_error",
+                    "severity": "high",
+                    "explanation": "Nutrient sensor reports anomaly (e.g., EC sensor malfunction or poor soil contact). " +
+                                  "Check sensor placement and clean electrodes. Reading may be unreliable.",
+                    "anomaly": nutrients_anomaly,
+                    "optimal_hours": None
+                })
             else:
-                severity = "moderate" if status_details["nutrients"] == 1 else "high"
+                # Calculate dynamic severity for normal status (1=low, 3=high)
+                nutrients_value = nutrients_data.get("value") if nutrients_data else None
+                nutrients_thresholds = nutrients_data.get("thresholds", {}) if nutrients_data else {}
 
-            issues.append({
-                "parameter": "nutrients",
-                "status": status_names[status_details["nutrients"]],
-                "severity": severity,
-                "explanation": f"Nutrient level (salinity) is {status_names[status_details['nutrients']]}. " +
-                              ("Low nutrients affect growth and leaf color. Consider fertilizing. " if status_details['nutrients'] == 1
-                               else "High salt concentration can damage roots. Flush soil with water. "),
-                "optimal_hours": plant.get("salinity_optimal_hours", 0) if plant.get("salinity_optimal_hours") else None
-            })
+                if nutrients_value is not None and nutrients_thresholds:
+                    severity = calculate_severity(nutrients_value, status_details["nutrients"], nutrients_thresholds, "nutrients")
+                else:
+                    severity = "moderate" if status_details["nutrients"] == 1 else "high"
+
+                issues.append({
+                    "parameter": "nutrients",
+                    "status": status_names[status_details["nutrients"]],
+                    "severity": severity,
+                    "explanation": f"Nutrient level (salinity) is {status_names[status_details['nutrients']]}. " +
+                                  ("Low nutrients affect growth and leaf color. Consider fertilizing. " if status_details['nutrients'] == 1
+                                   else "High salt concentration can damage roots. Flush soil with water. "),
+                    "optimal_hours": plant.get("salinity_optimal_hours", 0) if plant.get("salinity_optimal_hours") else None
+                })
 
         # === DETERMINE OVERALL HEALTH ===
         critical_issues = [i for i in issues if i["severity"] == "critical"]
@@ -1167,7 +1218,8 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
         for issue in issues:
             param = issue["parameter"]
             explanations[param] = issue["explanation"]
-            if issue["optimal_hours"] is not None and issue["optimal_hours"] > 0:
+            # Only add optimal_hours if it exists and is valid
+            if issue.get("optimal_hours") is not None and issue["optimal_hours"] > 0:
                 explanations[param] += f" Currently optimal for {issue['optimal_hours']}h/day."
 
         # === TREND ANALYSIS ===
@@ -1308,7 +1360,8 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
             if measurements_list:
                 # Get most recent measurement
                 latest = get_latest_measurement(measurements_list)
-                current_ec = latest.get("soil_fertility") or latest.get("salinity")
+                # Handle soil_fertility - 0 is valid, so check explicitly!
+                current_ec = latest.get("soil_fertility") if latest.get("soil_fertility") is not None else latest.get("salinity")
                 logger.info(f"Current EC value: {current_ec}")
 
         logger.info(f"Fertilization check: current_ec={current_ec}, has_measurements={len(measurements_list)}")
@@ -1556,7 +1609,14 @@ async def handle_get_plant_events(fyta_client: FytaClient, arguments: Any) -> li
                     enriched_plant_data["temperature"] = latest.get("temperature")
                     enriched_plant_data["light"] = latest.get("light")
                     enriched_plant_data["soil_moisture"] = latest.get("soil_moisture") or latest.get("moisture")
-                    enriched_plant_data["soil_fertility"] = latest.get("soil_fertility") or latest.get("salinity")
+
+                    # Handle soil_fertility - 0 is valid, so check explicitly!
+                    soil_fertility = latest.get("soil_fertility") if latest.get("soil_fertility") is not None else latest.get("salinity")
+                    if soil_fertility is not None:
+                        enriched_plant_data["soil_fertility"] = soil_fertility
+
+                    enriched_plant_data["soil_fertility_anomaly"] = latest.get("soil_fertility_anomaly", False)
+                    enriched_plant_data["soil_moisture_anomaly"] = latest.get("soil_moisture_anomaly", False)
                     logger.info(f"Plant {plant['id']}: Enriched with measurements - temp={latest.get('temperature')}")
 
             # Use smart status evaluation to fix FYTA's buggy status codes

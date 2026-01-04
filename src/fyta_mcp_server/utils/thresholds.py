@@ -214,6 +214,8 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
 
     # Evaluate nutrients (salinity/soil_fertility)
     nutrients = plant.get("salinity") or plant.get("soil_fertility")
+    nutrients_anomaly = plant.get("soil_fertility_anomaly", False)
+
     if nutrients is not None:
         # Handle special case: FYTA winter thresholds often have min=max=0 for salinity
         # In this case, any value > 0 is considered "high" but not critical
@@ -245,12 +247,19 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
             thresholds.get("salinity_max_acceptable")
         )
 
-        logger.info(f"Nutrients evaluation: value={nutrients}, min_good={min_good}, max_good={max_good}, result={status_code} ({status_name}), adjusted={min_good != thresholds.get('salinity_min_good', 0)}")
+        # Override status if sensor reports anomaly (e.g., EC sensor malfunction/no contact)
+        if nutrients_anomaly:
+            logger.warning(f"Nutrients sensor anomaly detected for plant {plant.get('id')}: value={nutrients}, treating as unreliable")
+            status_code = 4  # Critical - sensor issue
+            status_name = "sensor_error"
+
+        logger.info(f"Nutrients evaluation: value={nutrients}, min_good={min_good}, max_good={max_good}, result={status_code} ({status_name}), adjusted={min_good != thresholds.get('salinity_min_good', 0)}, anomaly={nutrients_anomaly}")
 
         result["nutrients"] = {
             "status": status_code,
             "status_name": status_name,
             "value": nutrients,
+            "anomaly": nutrients_anomaly,
             "thresholds": {
                 "min_good": min_good,
                 "max_good": max_good
@@ -311,8 +320,12 @@ def get_status_emoji(status: int) -> str:
     }.get(status, "❓")
 
 
-def get_status_description(status: int, metric: str) -> str:
+def get_status_description(status: int, metric: str, status_name: str = None) -> str:
     """Get human-readable status description"""
+    # Check for sensor error first
+    if status_name == "sensor_error":
+        return f"{metric} sensor error or anomaly detected"
+
     if status == 1:
         return f"{metric} is too low"
     elif status == 2:
