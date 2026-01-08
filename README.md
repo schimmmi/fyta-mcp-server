@@ -29,6 +29,12 @@ FYTA is a smart plant sensor system that measures soil moisture, temperature, li
 - 📖 **Care history analysis**: Analyze effectiveness of care actions
 - 🔔 **Event detection**: Automatically detect significant changes in plant conditions
 
+### Hub & Device Monitoring
+- 🔌 **Hub status monitoring**: Track all your FYTA Hubs (online/offline, firmware version, connectivity)
+- 📡 **Device health**: Monitor sensors, battery status, and last communication timestamps
+- ⚠️ **Connection alerts**: Detect hubs with lost connections and sensors that stopped reporting
+- 🔍 **Raw API access**: Full access to unfiltered FYTA API data for debugging
+
 ### Sensor Intelligence
 - 🎯 **Sensor capability detection**: Automatically detects sensor types (Beam 2.0, Beam, Legacy)
 - 💡 **Light sensor awareness**: Shows appropriate warnings when light data is unavailable
@@ -320,17 +326,50 @@ Show me the care history for plant 123 from the last 30 days
 ```
 View past care actions with effectiveness analysis.
 
-### Event Detection
+### Event Detection & Monitoring
+
+**Note**: MCP is a request-response protocol - it cannot push notifications. For proactive monitoring, you need to ask Claude regularly or integrate with automation systems like n8n or Home Assistant. See [examples/](examples/) for integration guides.
 
 #### Get plant events
 ```
-Show me recent events for plant 123
+Are there any problems with my plants?
 ```
-Automatically detects:
-- Sudden moisture drops (watering needed)
-- Temperature spikes (heat stress)
-- Light changes (moved to new location)
-- Nutrient depletion (fertilization needed)
+Automatically detects (on-demand):
+- 🔇 **Sensor silence**: Sensors not reporting for >90 minutes
+- 🔋 **Low battery**: Battery level below 20%
+- 💧 **Critical moisture**: Immediate watering needed
+- 🌡️ **Temperature extremes**: Heat stress risk
+- 📊 **Status changes**: Any parameter changed from optimal
+- 📡 **WiFi disconnects**: Connectivity issues
+
+Returns webhook-ready JSON with severity, priority, and actionable suggestions.
+
+**Practical use**: Ask Claude daily "Are there issues with my plants?" or integrate with cron/n8n for automation.
+
+### Hub & Device Monitoring
+
+#### Get all hubs
+```
+Show me my FYTA Hubs
+```
+Lists all hubs with:
+- Online/offline status
+- Firmware versions
+- Connected plants and sensors
+- Last seen timestamps
+- Connection health
+
+#### Get hub details
+```
+Show details for Hub E8:06:90:C4:B7:EE
+```
+Detailed hub information including all connected devices.
+
+#### Get raw API data
+```
+Show me the raw FYTA API response
+```
+Access complete unfiltered API data for debugging or discovering new features.
 
 ## API Endpoints
 
@@ -392,6 +431,14 @@ FYTA's fertilization predictions are generic and time-based ("fertilize in 190 d
 
 #### Winter Salinity Bug
 FYTA sometimes sets winter thresholds to min=max=0 for salinity. The server detects this and uses summer thresholds instead.
+
+#### EC=0 Anomaly Detection
+FYTA's API flags `soil_fertility_anomaly: true` even when EC=0 is completely normal (winter dormancy, no nutrients needed). The server intelligently distinguishes:
+- **EC=0 + Winter thresholds** → Normal (no nutrients needed) ✅
+- **EC=0 + Summer thresholds** → Sensor error (unusual) ⚠️
+- **EC≠0 + Anomaly flag** → Real hardware malfunction ⚠️
+
+This prevents false "Sensor-Anomalie" warnings during winter when plants don't need fertilizer.
 
 ## Troubleshooting
 

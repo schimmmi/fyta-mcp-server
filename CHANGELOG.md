@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-01-08
+
+### Added
+- **Hub Status Monitoring** 🔌
+  - New MCP tool: `get_all_hubs` - List all FYTA Hubs with status, firmware version, and connected plants
+  - New MCP tool: `get_hub_details` - Get detailed information about a specific hub
+  - New MCP tool: `get_fyta_raw_data` - Access complete unfiltered FYTA API response
+  - Hub status includes: online/offline status, firmware version, last seen timestamps, connectivity health
+  - Supports `hubs_with_lost_connection` API field for connection alerts
+
+### Fixed
+- **EC=0 False Positive Anomaly Detection** 🌱
+  - FYTA API flags `soil_fertility_anomaly: true` even when EC=0 is normal (winter dormancy)
+  - Now intelligently distinguishes:
+    - EC=0 + Winter thresholds (min=0, max=0) → **Normal** (no nutrients needed, ignore anomaly flag)
+    - EC=0 + Summer thresholds (min>0) → **Sensor error** (unusual, likely malfunction)
+    - EC≠0 + Anomaly flag → **Sensor error** (actual hardware issue)
+  - Prevents false "Sensor-Anomalie" warnings during winter when plants don't need nutrients
+
+### Technical Details
+- Hub data extracted from plant objects (each plant has associated hub info)
+- Smart anomaly detection in `utils/thresholds.py:250-267`
+- Handler implementations in `handlers.py:1997-2110`
+- Tool definitions in `tools.py:410-471`
+
 ## [1.2.6] - 2026-01-04
 
 ### Fixed

@@ -1977,6 +1977,136 @@ async def handle_get_plant_context(fyta_client: FytaClient, arguments: Any) -> l
         return [TextContent(type="text", text=f"Error getting context: {str(e)}")]
 
 
+async def handle_get_fyta_raw_data(fyta_client: FytaClient, arguments: Any) -> list[TextContent]:
+    """Handle get_fyta_raw_data tool call - returns complete unfiltered API response"""
+    data = await fyta_client.get_plants()
+
+    # Log top-level keys for visibility
+    logger.info(f"FYTA API response contains: {list(data.keys())}")
+
+    # Return complete raw data
+    return [TextContent(
+        type="text",
+        text=json.dumps(data, indent=2, default=str)
+    )]
+
+
+async def handle_get_all_hubs(fyta_client: FytaClient, arguments: Any) -> list[TextContent]:
+    """Handle get_all_hubs tool call - returns all hub information"""
+    data = await fyta_client.get_plants()
+
+    plants = data.get("plants", [])
+    hubs_lost = data.get("hubs_with_lost_connection", [])
+
+    # Extract unique hubs from plants
+    hubs = {}
+    for plant in plants:
+        hub_data = plant.get("hub")
+        if hub_data:
+            hub_id = hub_data.get("hub_id")
+            if hub_id and hub_id not in hubs:
+                # Add hub with additional info
+                hubs[hub_id] = {
+                    "hub_id": hub_id,
+                    "hub_name": hub_data.get("hub_name"),
+                    "version": hub_data.get("version"),
+                    "status": hub_data.get("status"),
+                    "status_text": "Online" if hub_data.get("status") == 1 else "Offline",
+                    "received_data_at": hub_data.get("received_data_at"),
+                    "reached_hub_at": hub_data.get("reached_hub_at"),
+                    "internal_id": hub_data.get("id"),
+                    "connected_plants": []
+                }
+
+            # Add plant to hub's connected plants list
+            if hub_id in hubs:
+                hubs[hub_id]["connected_plants"].append({
+                    "plant_id": plant.get("id"),
+                    "nickname": plant.get("nickname"),
+                    "sensor_id": plant.get("sensor", {}).get("id")
+                })
+
+    # Add lost connection warnings
+    result = {
+        "hubs": list(hubs.values()),
+        "total_hubs": len(hubs),
+        "hubs_with_lost_connection": hubs_lost,
+        "all_online": len(hubs_lost) == 0
+    }
+
+    return [TextContent(
+        type="text",
+        text=json.dumps(result, indent=2, default=str)
+    )]
+
+
+async def handle_get_hub_details(fyta_client: FytaClient, arguments: Any) -> list[TextContent]:
+    """Handle get_hub_details tool call - returns detailed info for specific hub"""
+    hub_id = arguments.get("hub_id")
+
+    if not hub_id:
+        return [TextContent(type="text", text="Error: hub_id is required")]
+
+    data = await fyta_client.get_plants()
+    plants = data.get("plants", [])
+    hubs_lost = data.get("hubs_with_lost_connection", [])
+
+    # Find hub and connected plants
+    hub_info = None
+    connected_plants = []
+
+    for plant in plants:
+        hub_data = plant.get("hub")
+        if hub_data and hub_data.get("hub_id") == hub_id:
+            if not hub_info:
+                hub_info = {
+                    "hub_id": hub_data.get("hub_id"),
+                    "hub_name": hub_data.get("hub_name"),
+                    "version": hub_data.get("version"),
+                    "status": hub_data.get("status"),
+                    "status_text": "Online" if hub_data.get("status") == 1 else "Offline",
+                    "received_data_at": hub_data.get("received_data_at"),
+                    "reached_hub_at": hub_data.get("reached_hub_at"),
+                    "internal_id": hub_data.get("id"),
+                }
+
+            # Add detailed plant info
+            sensor = plant.get("sensor", {})
+            connected_plants.append({
+                "plant_id": plant.get("id"),
+                "nickname": plant.get("nickname"),
+                "scientific_name": plant.get("scientific_name"),
+                "status": plant.get("status"),
+                "sensor": {
+                    "id": sensor.get("id"),
+                    "type_id": sensor.get("sensor_type_id"),
+                    "version": sensor.get("version"),
+                    "battery_low": sensor.get("is_battery_low", False),
+                    "last_data": sensor.get("received_data_at")
+                },
+                "wifi_status": plant.get("wifi_status")
+            })
+
+    if not hub_info:
+        return [TextContent(type="text", text=f"Hub {hub_id} not found")]
+
+    # Check if hub has lost connection
+    has_lost_connection = hub_id in hubs_lost
+
+    result = {
+        **hub_info,
+        "connected_plants": connected_plants,
+        "total_plants": len(connected_plants),
+        "has_lost_connection": has_lost_connection,
+        "connection_warning": "Hub has lost connection!" if has_lost_connection else None
+    }
+
+    return [TextContent(
+        type="text",
+        text=json.dumps(result, indent=2, default=str)
+    )]
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "get_all_plants": handle_get_all_plants,
@@ -1993,6 +2123,9 @@ TOOL_HANDLERS = {
     "get_plant_care_history": handle_get_plant_care_history,
     "set_plant_context": handle_set_plant_context,
     "get_plant_context": handle_get_plant_context,
+    "get_fyta_raw_data": handle_get_fyta_raw_data,
+    "get_all_hubs": handle_get_all_hubs,
+    "get_hub_details": handle_get_hub_details,
 }
 
 

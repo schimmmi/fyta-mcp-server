@@ -407,4 +407,66 @@ def get_tool_definitions() -> list[Tool]:
                 "required": ["plant_id"]
             }
         ),
+        Tool(
+            name="get_fyta_raw_data",
+            description=(
+                "Get raw FYTA API response data including all available fields. "
+                "This returns the complete, unfiltered API response which may include: "
+                "- Plants data (detailed sensor readings) "
+                "- Gardens data (garden organization) "
+                "- Hubs data (FYTA Hub status and information) "
+                "- Devices data (sensor devices, firmware versions, connectivity) "
+                "- Any other metadata provided by FYTA API "
+                "Useful for debugging, discovering new API features, or accessing "
+                "data not yet exposed through specialized tools."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_all_hubs",
+            description=(
+                "Get status and information about all FYTA Hubs in your account. "
+                "Returns comprehensive hub data including: "
+                "- Hub ID and name "
+                "- Firmware version "
+                "- Online/offline status "
+                "- Last data received timestamp "
+                "- Connected plants/sensors "
+                "- Connectivity health indicators "
+                "Use this to monitor hub health, diagnose connectivity issues, "
+                "or check for firmware updates."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_hub_details",
+            description=(
+                "Get detailed information about a specific FYTA Hub. "
+                "Includes: "
+                "- Hub specifications (ID, name, MAC address, version) "
+                "- Current status and uptime "
+                "- All plants/sensors connected to this hub "
+                "- Connectivity metrics (last seen, data reception) "
+                "- Lost connection warnings "
+                "Perfect for troubleshooting hub-specific issues."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "hub_id": {
+                        "type": "string",
+                        "description": "The MAC address/ID of the hub (e.g., 'E8:06:90:C4:B7:EE')"
+                    }
+                },
+                "required": ["hub_id"]
+            }
+        ),
     ]
