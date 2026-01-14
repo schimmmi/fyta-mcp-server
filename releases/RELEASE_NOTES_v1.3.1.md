@@ -159,15 +159,19 @@ No breaking changes. The server will automatically use the new thresholds.
 
 ## Installation
 
-Update to v1.3.1:
+Update to v1.3.1 by cloning/pulling the repository:
 
 ```bash
-pip install --upgrade fyta-mcp-server
+cd /path/to/fyta-mcp-server
+git pull
+git checkout v1.3.1
 ```
 
-Or with uv:
+Or clone fresh:
 ```bash
-uv pip install --upgrade fyta-mcp-server
+git clone https://github.com/schimmmi/fyta-mcp-server.git
+cd fyta-mcp-server
+git checkout v1.3.1
 ```
 
 ## Links
