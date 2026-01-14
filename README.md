@@ -429,16 +429,19 @@ FYTA's fertilization predictions are generic and time-based ("fertilize in 190 d
 - **Trend prediction**: Linear regression to predict when EC reaches critical levels
 - **Action timing**: Immediate, soon, or maintain based on current EC and trend
 
-#### Winter Salinity Bug
-FYTA sometimes sets winter thresholds to min=max=0 for salinity. The server detects this and uses summer thresholds instead.
+#### Salinity Thresholds
+The server uses optimal salinity ranges of **0.2-1.0 mS/cm** (lower in winter, higher in summer).
 
-#### EC=0 Anomaly Detection
-FYTA's API flags `soil_fertility_anomaly: true` even when EC=0 is completely normal (winter dormancy, no nutrients needed). The server intelligently distinguishes:
-- **EC=0 + Winter thresholds** → Normal (no nutrients needed) ✅
-- **EC=0 + Summer thresholds** → Sensor error (unusual) ⚠️
-- **EC≠0 + Anomaly flag** → Real hardware malfunction ⚠️
+When FYTA sets winter thresholds to min=max=0, the server applies these defaults instead to properly evaluate nutrient status.
 
-This prevents false "Sensor-Anomalie" warnings during winter when plants don't need fertilizer.
+#### EC=0 Handling
+EC=0 means **no nutrients present in soil** and is evaluated as "low" status requiring fertilization.
+
+FYTA's API may flag `soil_fertility_anomaly: true` when:
+- **EC=0 with anomaly flag** → Sensor might have poor soil contact, but EC=0 still indicates no nutrients
+- **EC≠0 with anomaly flag** → Real sensor malfunction (unreliable reading)
+
+The server respects FYTA's anomaly flags but treats EC=0 as a valid measurement indicating nutrient deficiency.
 
 ## Troubleshooting
 

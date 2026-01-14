@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-01-14
+
+### Changed
+- **Updated Salinity Thresholds** 🌱
+  - Optimal range adjusted from 0.3-1.2 mS/cm to **0.2-1.0 mS/cm**
+  - Lower values in winter (0.2), higher in summer (1.0)
+  - Better aligns with actual plant nutrient requirements
+
+### Fixed
+- **EC=0 Anomaly Handling** 🔧
+  - EC=0 is now correctly treated as valid measurement (no nutrients present)
+  - Simplified anomaly logic: only EC≠0 with anomaly flag indicates sensor malfunction
+  - EC=0 always evaluated as "low" status requiring fertilization
+  - Removed incorrect "winter dormancy = normal" assumption
+  - Documentation updated to reflect that EC=0 means nutrient deficiency
+
+### Technical Details
+- Updated default thresholds in `utils/thresholds.py:240,241,233,234`
+- Simplified anomaly detection in `utils/thresholds.py:251-261`
+- Documentation clarified in `README.md:432-444`
+
 ## [1.3.0] - 2026-01-08
 
 ### Added

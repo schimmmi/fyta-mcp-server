@@ -230,14 +230,15 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
                 if thresholds_list:
                     for t in thresholds_list:
                         if t and isinstance(t, dict) and t.get("thresholds_type") == "summer":
-                            min_good = t.get("salinity_min_good", 0.4)
-                            max_good = t.get("salinity_max_good", 1.2)
+                            min_good = t.get("salinity_min_good", 0.2)
+                            max_good = t.get("salinity_max_good", 1.0)
                             break
 
             # Fallback to reasonable defaults
+            # Optimal range: 0.2-1.0 mS/cm (winter: lower end, summer: upper end)
             if min_good == 0 and max_good == 0:
-                min_good = 0.3
-                max_good = 1.2
+                min_good = 0.2
+                max_good = 1.0
 
         status_code, status_name = evaluate_metric_status(
             nutrients,
@@ -248,23 +249,16 @@ def evaluate_plant_status(plant: Dict, measurements_data: Optional[Dict] = None)
         )
 
         # Override status if sensor reports anomaly (e.g., EC sensor malfunction/no contact)
-        # BUT: EC=0 during winter dormancy is NORMAL, not a sensor error!
-        # Only treat as anomaly if:
-        # 1. EC=0 AND it's summer (thresholds > 0)
-        # 2. OR EC != 0 but still flagged as anomaly (actual malfunction)
-        if nutrients_anomaly:
-            # Check if this is likely a "false positive" anomaly (EC=0 in winter)
-            winter_thresholds = thresholds.get("salinity_min_good", 0) == 0 and thresholds.get("salinity_max_good", 0) == 0
-            is_winter_ec_zero = nutrients == 0 and winter_thresholds
-
-            if is_winter_ec_zero:
-                # EC=0 in winter is NORMAL - ignore anomaly flag
-                logger.info(f"Nutrients EC=0 with winter thresholds for plant {plant.get('id')} - ignoring anomaly flag (no nutrients needed)")
-            else:
-                # Real sensor anomaly detected
-                logger.warning(f"Nutrients sensor anomaly detected for plant {plant.get('id')}: value={nutrients}, treating as unreliable")
-                status_code = 4  # Critical - sensor issue
-                status_name = "sensor_error"
+        # Note: EC=0 is a valid measurement meaning NO nutrients present (low status)
+        # Only treat as sensor error if anomaly flag is set AND value is not 0
+        if nutrients_anomaly and nutrients != 0:
+            # Real sensor anomaly detected (malfunction while measuring non-zero value)
+            logger.warning(f"Nutrients sensor anomaly detected for plant {plant.get('id')}: value={nutrients}, treating as unreliable")
+            status_code = 4  # Critical - sensor issue
+            status_name = "sensor_error"
+        elif nutrients == 0:
+            # EC=0 is a valid measurement: no nutrients in soil
+            logger.info(f"Nutrients EC=0 for plant {plant.get('id')} - no nutrients present (fertilization needed)")
 
         logger.info(f"Nutrients evaluation: value={nutrients}, min_good={min_good}, max_good={max_good}, result={status_code} ({status_name}), adjusted={min_good != thresholds.get('salinity_min_good', 0)}, anomaly={nutrients_anomaly}")
 
