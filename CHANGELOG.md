@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-01-15
+
+### Fixed
+- **Sensor Anomaly with EC=0** ⚠️
+  - Fixed bug where EC=0 with anomaly flag still recommended "fertilize_now"
+  - Removed `current_ec != 0` condition from anomaly check
+  - ALL sensor anomalies now trigger "check_sensor" action, including EC=0
+  - Reasoning: EC=0 with anomaly likely means poor sensor contact (no contact = EC=0)
+  - User must verify sensor placement before fertilizing
+
+### Technical Details
+- Updated `utils/fertilization.py:276` - Removed EC≠0 condition from anomaly check
+- Updated reasoning and warnings to clarify EC=0 may be false reading
+
 ## [1.3.3] - 2026-01-15
 
 ### Fixed

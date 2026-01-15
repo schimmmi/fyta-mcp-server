@@ -273,7 +273,7 @@ def get_fertilization_recommendation(
         Dict with recommendation, timing, dosage advice
     """
     # Check for sensor anomaly first
-    if sensor_anomaly and current_ec != 0:
+    if sensor_anomaly:
         return {
             "current_status": {
                 "status": "sensor_error",
@@ -288,14 +288,16 @@ def get_fertilization_recommendation(
             "dosage": None,
             "reasoning": [
                 "FYTA reports sensor anomaly - reading may be unreliable",
+                f"Current reading: EC={current_ec} (may be incorrect due to poor sensor contact)",
                 "Check sensor placement and soil contact",
                 "Clean sensor electrodes if needed",
                 "Wait for stable readings before fertilizing"
             ],
             "warnings": [
                 "⚠️ Do not fertilize based on unreliable sensor data!",
+                "Sensor anomaly detected - reading may be false",
                 "Reposition sensor for better soil contact",
-                "Monitor readings for 24-48 hours"
+                "Monitor readings for 24-48 hours before taking action"
             ]
         }
 
