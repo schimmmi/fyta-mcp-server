@@ -6,11 +6,13 @@ This module analyzes actual EC/soil_fertility values and trends to provide smart
 data-driven fertilization advice.
 
 EC (Electrical Conductivity) / Soil Fertility Scale:
-- 0.0 - 0.3: Very low - Urgent fertilization needed
-- 0.3 - 0.6: Low - Fertilization recommended soon
+- 0.0 - 0.2: Very low - Urgent fertilization needed
+- 0.2 - 0.6: Low - Fertilization recommended soon
 - 0.6 - 1.0: Optimal - Well fertilized
 - 1.0 - 1.5: High - Reduce fertilization
 - 1.5+: Very high - Risk of nutrient burn, flush soil
+
+Winter (Nov-Feb): Plants prefer lower end of range (0.2-1.0 mS/cm)
 
 Different substrates have different EC requirements:
 - Organic soil: 0.8 - 1.2 optimal
@@ -47,7 +49,7 @@ def get_ec_status(ec_value: float, substrate_type: Optional[str] = None, conside
     min_optimal, max_optimal = optimal_ranges.get(substrate_type, (0.6, 1.0))
 
     # Critical thresholds (substrate-independent)
-    critical_low = 0.3
+    critical_low = 0.2  # Below 0.2 mS/cm = nutrient deficiency
     critical_high = 1.5
 
     # Adjust for winter dormancy (November-February in Northern Hemisphere)
@@ -56,11 +58,11 @@ def get_ec_status(ec_value: float, substrate_type: Optional[str] = None, conside
         is_winter = current_month in [11, 12, 1, 2]
 
         if is_winter:
-            # In winter, plants consume fewer nutrients during dormancy
-            # Much more lenient thresholds - 0.1-0.3 is normal in winter
-            critical_low = 0.05  # Only truly starved plants
-            min_optimal = 0.08   # Very low EC is acceptable in winter dormancy
-            max_optimal = max(max_optimal, 0.8)  # Keep upper bound reasonable
+            # In winter, plants still need nutrients but prefer lower end of range
+            # Use more conservative thresholds: 0.2-1.0 mS/cm
+            critical_low = 0.2  # Plants still need minimum nutrients
+            min_optimal = max(0.2, min_optimal * 0.5)  # Lower end of optimal range
+            max_optimal = min(1.0, max_optimal)  # Cap at 1.0 in winter
 
     if ec_value < critical_low:
         return {
@@ -223,9 +225,9 @@ def analyze_ec_trend(measurements: List[Dict], days: int = 30) -> Dict:
         "last_measurement": ec_data[-1][0].isoformat()
     }
 
-    # Predict when EC will reach critical low (0.3)
-    if direction == "decreasing" and current_ec > 0.3:
-        days_until_critical = (current_ec - 0.3) / abs(slope_per_day)
+    # Predict when EC will reach critical low (0.2)
+    if direction == "decreasing" and current_ec > 0.2:
+        days_until_critical = (current_ec - 0.2) / abs(slope_per_day)
         if days_until_critical > 0:
             critical_date = datetime.now() + timedelta(days=days_until_critical)
             result["prediction"] = {

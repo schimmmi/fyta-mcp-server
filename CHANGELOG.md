@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-01-15
+
+### Fixed
+- **Winter Fertilization Logic** ❄️
+  - Removed overly lenient winter thresholds that treated EC=0.08 as optimal
+  - Winter critical_low updated from 0.05 to 0.2 mS/cm
+  - Plants need adequate nutrients year-round, even in winter dormancy
+  - Winter optimal range now: 0.2-1.0 mS/cm (lower end preferred)
+  - EC < 0.2 now correctly triggers fertilization recommendations in all seasons
+
+### Technical Details
+- Updated `utils/fertilization.py:50,61-63` - Winter threshold logic
+- Updated `utils/fertilization.py:9-15` - Documentation
+- Updated `utils/fertilization.py:228-230` - Trend prediction threshold
+
 ## [1.3.1] - 2026-01-14
 
 ### Changed
