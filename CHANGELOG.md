@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-01-15
+
+### Fixed
+- **Sensor Anomaly Handling in Fertilization** ⚠️
+  - Fertilization recommendations now respect FYTA's `soil_fertility_anomaly` flag
+  - When sensor anomaly detected (EC≠0), recommend checking sensor instead of fertilizing
+  - Action: `check_sensor` with clear warnings not to fertilize based on unreliable data
+  - Prevents incorrect fertilization based on faulty sensor readings
+  - EC=0 still triggers fertilization (valid measurement = no nutrients)
+
+### Technical Details
+- Updated `utils/fertilization.py:253-300` - Added `sensor_anomaly` parameter and early return
+- Updated `handlers.py:1376-1397` - Pass anomaly flag to fertilization recommendation
+
 ## [1.3.2] - 2026-01-15
 
 ### Fixed

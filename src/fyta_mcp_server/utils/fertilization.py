@@ -255,7 +255,8 @@ def get_fertilization_recommendation(
     ec_trend: Optional[Dict] = None,
     substrate_type: Optional[str] = None,
     last_fertilized: Optional[str] = None,
-    care_history: Optional[List[Dict]] = None
+    care_history: Optional[List[Dict]] = None,
+    sensor_anomaly: bool = False
 ) -> Dict:
     """
     Generate comprehensive fertilization recommendation.
@@ -266,10 +267,38 @@ def get_fertilization_recommendation(
         substrate_type: Type of substrate
         last_fertilized: ISO date string of last fertilization
         care_history: Care action history (for fertilization frequency analysis)
+        sensor_anomaly: Whether FYTA reports sensor anomaly (default: False)
 
     Returns:
         Dict with recommendation, timing, dosage advice
     """
+    # Check for sensor anomaly first
+    if sensor_anomaly and current_ec != 0:
+        return {
+            "current_status": {
+                "status": "sensor_error",
+                "severity": "critical",
+                "description": f"EC sensor reports anomaly at {current_ec}",
+                "emoji": "⚠️",
+                "action_needed": "check_sensor",
+                "explanation": "Sensor may have poor soil contact or malfunction. Check sensor placement before fertilizing."
+            },
+            "action": "check_sensor",
+            "timing": "Before fertilizing",
+            "dosage": None,
+            "reasoning": [
+                "FYTA reports sensor anomaly - reading may be unreliable",
+                "Check sensor placement and soil contact",
+                "Clean sensor electrodes if needed",
+                "Wait for stable readings before fertilizing"
+            ],
+            "warnings": [
+                "⚠️ Do not fertilize based on unreliable sensor data!",
+                "Reposition sensor for better soil contact",
+                "Monitor readings for 24-48 hours"
+            ]
+        }
+
     # Get current EC status
     ec_status = get_ec_status(current_ec, substrate_type)
 

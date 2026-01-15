@@ -1373,6 +1373,10 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
                 context = context_store.get_context(plant_id)
                 substrate_type = context.get("substrate") if context else None
 
+                # Get sensor anomaly flag from latest measurement
+                latest = get_latest_measurement(measurements_list)
+                sensor_anomaly = latest.get("soil_fertility_anomaly", False) if latest else False
+
                 # Analyze EC trend
                 ec_trend = analyze_ec_trend(measurements_list, days=30)
                 logger.info(f"EC trend analyzed: {ec_trend.get('analyzed', False)}")
@@ -1389,7 +1393,8 @@ async def handle_diagnose_plant(fyta_client: FytaClient, arguments: Any) -> list
                     ec_trend=ec_trend,
                     substrate_type=substrate_type,
                     last_fertilized=last_fertilized,
-                    care_history=care_history
+                    care_history=care_history,
+                    sensor_anomaly=sensor_anomaly
                 )
 
                 logger.info(f"Fertilization recommendation generated: {fert_recommendation is not None}")
