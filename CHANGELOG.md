@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2026-01-17
+
+### Added
+- **Smart Anomaly Detection** 🧠
+  - Analyzes EC trend over 30 days to distinguish between sensor errors and real nutrient depletion
+  - Sudden drop to EC=0 (from >0.3) → Sensor error, recommend checking sensor
+  - Gradual decline to EC=0 (from ≤0.3 or decreasing trend) → Real depletion, recommend fertilization
+  - Prevents false "check_sensor" recommendations when plants genuinely need nutrients
+
+### Fixed
+- **EC=0 with Anomaly Flag** 🎯
+  - v1.3.4 was too conservative: ALL EC=0 with anomaly → "check_sensor"
+  - Real-world case: Plant with EC 0.1→0.0 (gradual depletion) was told "check_sensor" instead of "fertilize"
+  - Now correctly identifies gradual nutrient consumption vs. sensor malfunction
+  - Uses trend analysis to make intelligent decision
+
+### Technical Details
+- Updated `utils/thresholds.py:88` - Added `ec_trend` parameter to `evaluate_plant_status()`
+- Updated `utils/thresholds.py:251-286` - Smart anomaly detection based on EC trend
+- Updated `handlers.py:1014-1025` - Calculate EC trend early for anomaly detection
+- Updated `handlers.py:1386-1392` - Reuse EC trend to avoid duplicate calculation
+- Updated `handlers.py:1138-1152` - Use `status_name` to distinguish `sensor_error` from `critical_low`
+- Added comprehensive release notes: `releases/RELEASE_NOTES_v1.3.5.md`
+
+### Behavior Changes
+| EC | Anomaly | Trend (30d) | Initial EC | Old (v1.3.4) | New (v1.3.5) |
+|----|---------|-------------|------------|--------------|--------------|
+| 0 | true | stable | 0.1 | check_sensor | fertilize_now ✅ |
+| 0 | true | decreasing | 0.5 | check_sensor | fertilize_now ✅ |
+| 0 | true | stable | 0.8 | check_sensor | check_sensor ✅ |
+| 0 | false | - | - | fertilize_now | fertilize_now ✅ |
+
 ## [1.3.4] - 2026-01-15
 
 ### Fixed
