@@ -43,11 +43,104 @@ npm install @joshuatz/n8n-nodes-mcp
 
 #### 2. Configure MCP Server Connection
 
-**Option A: Start FYTA MCP Server via stdio**
+You can configure the MCP server connection either via **UI** (recommended for beginners) or **config file** (for advanced users).
 
-n8n-nodes-mcp can launch the MCP server automatically:
+---
+
+##### **Option A: UI Configuration (Recommended)** 🎨
+
+The easiest way to set up the FYTA MCP Server in n8n is through the visual interface:
+
+**Step 1: Create MCP Credential**
+
+1. In n8n, go to **Credentials** (gear icon in top menu)
+2. Click **Add Credential**
+3. Search for **"MCP"** and select **"MCP Server"**
+4. Fill in the fields:
+
+**For stdio transport (n8n starts server):**
+
+| Field | Value |
+|-------|-------|
+| **Name** | `FYTA Plant Monitor` |
+| **Transport Type** | `stdio` |
+| **Command** | `python` |
+| **Arguments** | `-m fyta_mcp_server` |
+| **Working Directory** | `/absolute/path/to/fyta-mcp-server` |
+| **Environment Variables** | Click "Add Environment Variable" |
+| └─ **Name** | `FYTA_EMAIL` |
+| └─ **Value** | `your-email@example.com` |
+| └─ **Name** | `FYTA_PASSWORD` |
+| └─ **Value** | `your-password` |
+
+**Important Notes:**
+- ⚠️ Use **absolute path** for Working Directory (e.g., `/home/user/fyta-mcp-server`)
+- ⚠️ Make sure Python virtual environment is activated or use full path to Python (e.g., `/home/user/fyta-mcp-server/.venv/bin/python`)
+- ✅ Arguments should be entered as **separate array items** if the UI allows, or as single string `-m fyta_mcp_server`
+
+**Step 2: Test Connection**
+
+1. Click **"Test Connection"** button
+2. You should see: ✅ "Connection successful"
+3. If it fails, check:
+   - Python path is correct
+   - Virtual environment is activated
+   - Credentials are valid
+   - Working directory exists
+
+**Step 3: Use in Workflow**
+
+1. Add an **"MCP Tool"** node to your workflow
+2. In the node settings:
+   - **Credential**: Select `FYTA Plant Monitor`
+   - **Tool**: Select from dropdown (e.g., `list_plants`)
+   - **Parameters**: Enter JSON (e.g., `{}` for list_plants)
+
+---
+
+##### **Option B: UI Configuration with SSE** 🌐
+
+If you prefer to run the MCP server separately:
+
+**Step 1: Start FYTA MCP Server**
+
+```bash
+cd /path/to/fyta-mcp-server
+source .venv/bin/activate
+
+# Set credentials
+export FYTA_EMAIL="your-email@example.com"
+export FYTA_PASSWORD="your-password"
+
+# Start server with SSE transport
+python -m fyta_mcp_server --transport sse --port 3000
+```
+
+**Step 2: Create MCP Credential in n8n UI**
+
+1. Go to **Credentials** → **Add Credential** → **MCP Server**
+2. Fill in:
+
+| Field | Value |
+|-------|-------|
+| **Name** | `FYTA Plant Monitor (SSE)` |
+| **Transport Type** | `sse` (or `http` depending on node version) |
+| **URL** | `http://localhost:3000/sse` |
+
+**Step 3: Test & Use**
+
+1. Click **"Test Connection"** → Should succeed
+2. Add **MCP Tool** node and select this credential
+
+---
+
+##### **Option C: Config File (Advanced)** ⚙️
+
+For power users who prefer configuration files:
 
 Create `~/.n8n/mcp-config.json`:
+
+**stdio transport:**
 ```json
 {
   "mcpServers": {
@@ -67,24 +160,7 @@ Create `~/.n8n/mcp-config.json`:
 }
 ```
 
-**Option B: Connect to running MCP Server via SSE**
-
-If you prefer to run the MCP server separately (e.g., for debugging):
-
-Start FYTA MCP Server with SSE transport:
-```bash
-cd /path/to/fyta-mcp-server
-source .venv/bin/activate
-
-# Set credentials
-export FYTA_EMAIL="your-email@example.com"
-export FYTA_PASSWORD="your-password"
-
-# Start server with SSE transport
-python -m fyta_mcp_server --transport sse --port 3000
-```
-
-Configure n8n to connect:
+**SSE transport:**
 ```json
 {
   "mcpServers": {
@@ -94,6 +170,16 @@ Configure n8n to connect:
     }
   }
 }
+```
+
+After creating the config file, restart n8n:
+```bash
+# If using Docker
+docker restart n8n
+
+# If using npm
+pkill -f n8n
+n8n start
 ```
 
 #### 3. Create n8n Workflow with MCP Node
