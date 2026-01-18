@@ -90,11 +90,12 @@ The easiest way to set up the FYTA MCP Server in n8n is through the visual inter
 
 **Step 3: Use in Workflow**
 
-1. Add an **"MCP Tool"** node to your workflow
+1. Add an **"MCP Client"** node to your workflow (search for "MCP" in node search)
 2. In the node settings:
-   - **Credential**: Select `FYTA Plant Monitor`
-   - **Tool**: Select from dropdown (e.g., `list_plants`)
-   - **Parameters**: Enter JSON (e.g., `{}` for list_plants)
+   - **Operation**: `Call Tool`
+   - **Credential**: Select `FYTA Plant Monitor` (the credential you created)
+   - **Tool Name**: Enter tool name (e.g., `list_plants`)
+   - **Tool Input**: Enter JSON parameters (e.g., `{}` for list_plants, or `{"plant_id": 108009}` for get_plant)
 
 ---
 
@@ -130,7 +131,7 @@ python -m fyta_mcp_server --transport sse --port 3000
 **Step 3: Test & Use**
 
 1. Click **"Test Connection"** → Should succeed
-2. Add **MCP Tool** node and select this credential
+2. Add **MCP Client** node and select this credential
 
 ---
 
@@ -182,16 +183,16 @@ pkill -f n8n
 n8n start
 ```
 
-#### 3. Create n8n Workflow with MCP Node
+#### 3. Create n8n Workflow with MCP Client Node
 
 **Example Workflow: Daily Plant Health Check**
 
 ```
 [Schedule Trigger: 9:00 AM]
-    → [MCP Tool: list_plants]
+    → [MCP Client: list_plants]
     → [Code: Filter Unhealthy Plants]
     → [IF: Has Issues]
-        → [MCP Tool: diagnose_plant]
+        → [MCP Client: diagnose_plant]
         → [Send Notification]
 ```
 
@@ -199,11 +200,12 @@ n8n start
 - **Trigger**: Schedule Trigger
 - **Trigger Interval**: Daily at 9:00 AM
 
-**B. MCP Tool Node - List Plants**
-- **Node**: MCP Tool
-- **MCP Server**: `fyta`
-- **Tool**: `list_plants`
-- **Parameters**: `{}` (empty)
+**B. MCP Client Node - List Plants**
+- **Node Type**: MCP Client (search for "MCP" in node list)
+- **Operation**: Call Tool
+- **Credential**: Select your FYTA credential
+- **Tool Name**: `list_plants`
+- **Tool Input**: `{}` (empty JSON object)
 
 **C. Code Node - Filter Plants**
 ```javascript
@@ -227,14 +229,15 @@ return needsAttention.map(plant => ({
 **D. IF Node - Check if Plants Need Attention**
 - **Condition**: `{{ $json.plant_id !== undefined }}`
 
-**E. MCP Tool Node - Diagnose Plant** (in True branch)
-- **Node**: MCP Tool
-- **MCP Server**: `fyta`
-- **Tool**: `diagnose_plant`
-- **Parameters**:
+**E. MCP Client Node - Diagnose Plant** (in True branch)
+- **Node Type**: MCP Client
+- **Operation**: Call Tool
+- **Credential**: Select your FYTA credential
+- **Tool Name**: `diagnose_plant`
+- **Tool Input**:
   ```json
   {
-    "plant_id": "{{ $json.plant_id }}",
+    "plant_id": {{ $json.plant_id }},
     "include_recommendations": true
   }
   ```
@@ -261,9 +264,9 @@ return needsAttention.map(plant => ({
 
 ```
 [Schedule: Check every 6 hours]
-    → [MCP Tool: list_plants]
+    → [MCP Client: list_plants]
     → [Split In Batches]
-        → [MCP Tool: diagnose_plant]
+        → [MCP Client: diagnose_plant]
         → [Code: Check Fertilization Status]
         → [IF: Needs Fertilization]
             → [Create Todo in Todoist]
@@ -304,7 +307,7 @@ return [];
 
 ```
 [Schedule: Every 5 minutes]
-    → [MCP Tool: get_plant_events]
+    → [MCP Client: get_plant_events]
     → [Code: Process Events]
     → [Switch by Severity]
         → Critical: [Urgent Notification + Log to DB]
@@ -358,14 +361,14 @@ return Object.keys(grouped).flatMap(severity =>
 
 ```
 [Webhook: Water Plant Completed]
-    → [MCP Tool: log_care_action]
+    → [MCP Client: log_care_action]
     → [PostgreSQL: Store History]
-    → [MCP Tool: diagnose_plant]
+    → [MCP Client: diagnose_plant]
     → [Code: Calculate Next Watering]
     → [Schedule Future Reminder]
 ```
 
-**MCP Tool - Log Care Action:**
+**MCP Client - Log Care Action:**
 ```json
 {
   "plant_id": "{{ $json.plant_id }}",
@@ -396,7 +399,7 @@ Always add error handling to your workflows:
 
 **Try-Catch Pattern:**
 ```
-[MCP Tool]
+[MCP Client]
     → [On Error: Catch]
         → [Log Error to File/DB]
         → [Send Error Notification]
@@ -430,7 +433,7 @@ return {
 - ✅ Cache plant data in n8n memory/database for frequently accessed info
 
 **Reliability:**
-- ✅ Add **error handlers** to all MCP Tool nodes
+- ✅ Add **error handlers** to all MCP Client nodes
 - ✅ Implement **retry logic** with exponential backoff
 - ✅ Log all failures to database for debugging
 
