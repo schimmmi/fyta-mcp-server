@@ -16,7 +16,396 @@ Complete guide for integrating FYTA MCP Server with automation platforms.
 
 n8n is a workflow automation tool that can poll the FYTA MCP Server and trigger actions based on plant events.
 
-### Method 1: HTTP Request with Polling
+### Method 1: Direct MCP Integration (Recommended) 🔥
+
+Use the **n8n-nodes-mcp** community node to directly connect to the FYTA MCP Server without needing an HTTP wrapper.
+
+#### Prerequisites
+
+1. **n8n installed** (self-hosted or desktop app)
+2. **FYTA MCP Server running locally**
+3. **n8n-nodes-mcp** community node installed
+
+#### 1. Install n8n-nodes-mcp Community Node
+
+In n8n:
+1. Go to **Settings** → **Community Nodes**
+2. Search for `@joshuatz/n8n-nodes-mcp`
+3. Click **Install**
+4. Restart n8n
+
+Or install via command line:
+```bash
+cd ~/.n8n
+npm install @joshuatz/n8n-nodes-mcp
+# Restart n8n
+```
+
+#### 2. Configure MCP Server Connection
+
+**Option A: Start FYTA MCP Server via stdio**
+
+n8n-nodes-mcp can launch the MCP server automatically:
+
+Create `~/.n8n/mcp-config.json`:
+```json
+{
+  "mcpServers": {
+    "fyta": {
+      "command": "python",
+      "args": [
+        "-m",
+        "fyta_mcp_server"
+      ],
+      "env": {
+        "FYTA_EMAIL": "your-email@example.com",
+        "FYTA_PASSWORD": "your-password"
+      },
+      "cwd": "/path/to/fyta-mcp-server"
+    }
+  }
+}
+```
+
+**Option B: Connect to running MCP Server via SSE**
+
+If you prefer to run the MCP server separately (e.g., for debugging):
+
+Start FYTA MCP Server with SSE transport:
+```bash
+cd /path/to/fyta-mcp-server
+source .venv/bin/activate
+
+# Set credentials
+export FYTA_EMAIL="your-email@example.com"
+export FYTA_PASSWORD="your-password"
+
+# Start server with SSE transport
+python -m fyta_mcp_server --transport sse --port 3000
+```
+
+Configure n8n to connect:
+```json
+{
+  "mcpServers": {
+    "fyta": {
+      "url": "http://localhost:3000/sse",
+      "transport": "sse"
+    }
+  }
+}
+```
+
+#### 3. Create n8n Workflow with MCP Node
+
+**Example Workflow: Daily Plant Health Check**
+
+```
+[Schedule Trigger: 9:00 AM]
+    → [MCP Tool: list_plants]
+    → [Code: Filter Unhealthy Plants]
+    → [IF: Has Issues]
+        → [MCP Tool: diagnose_plant]
+        → [Send Notification]
+```
+
+**A. Schedule Trigger Node**
+- **Trigger**: Schedule Trigger
+- **Trigger Interval**: Daily at 9:00 AM
+
+**B. MCP Tool Node - List Plants**
+- **Node**: MCP Tool
+- **MCP Server**: `fyta`
+- **Tool**: `list_plants`
+- **Parameters**: `{}` (empty)
+
+**C. Code Node - Filter Plants**
+```javascript
+// Filter plants that need attention
+const plants = $input.item.json.plants;
+
+const needsAttention = plants.filter(plant => {
+  return plant.status !== 'good' && plant.status !== 'excellent';
+});
+
+return needsAttention.map(plant => ({
+  json: {
+    plant_id: plant.id,
+    plant_name: plant.nickname,
+    status: plant.status,
+    issues: plant.issues
+  }
+}));
+```
+
+**D. IF Node - Check if Plants Need Attention**
+- **Condition**: `{{ $json.plant_id !== undefined }}`
+
+**E. MCP Tool Node - Diagnose Plant** (in True branch)
+- **Node**: MCP Tool
+- **MCP Server**: `fyta`
+- **Tool**: `diagnose_plant`
+- **Parameters**:
+  ```json
+  {
+    "plant_id": "{{ $json.plant_id }}",
+    "include_recommendations": true
+  }
+  ```
+
+**F. Send Notification Node**
+- **Node**: Send Email / Telegram / Discord (your choice)
+- **Message Template**:
+  ```
+  🌱 Plant Alert: {{ $json.plantName }}
+
+  Health: {{ $json.health }}
+  Issues: {{ $json.mainIssues.join(', ') }}
+
+  Recommendations:
+  {{ $json.recommendations.map(r => `• ${r.action}: ${r.details}`).join('\n') }}
+
+  Watering: {{ $json.watering.recommendation.action }}
+  Fertilization: {{ $json.fertilization.recommendation.action }}
+  ```
+
+#### 4. Advanced Workflow Examples
+
+**Example 1: Auto-Fertilization Reminder**
+
+```
+[Schedule: Check every 6 hours]
+    → [MCP Tool: list_plants]
+    → [Split In Batches]
+        → [MCP Tool: diagnose_plant]
+        → [Code: Check Fertilization Status]
+        → [IF: Needs Fertilization]
+            → [Create Todo in Todoist]
+            → [Send Push Notification]
+```
+
+**Code Node - Check Fertilization:**
+```javascript
+const diagnosis = $input.item.json;
+const fertRecommendation = diagnosis.fertilization?.recommendation;
+
+if (!fertRecommendation) {
+  return [];
+}
+
+// Check if fertilization needed
+const needsFertilization =
+  fertRecommendation.action === 'fertilize_now' ||
+  fertRecommendation.action === 'fertilize_soon';
+
+if (needsFertilization) {
+  return [{
+    json: {
+      plant_id: diagnosis.plantId,
+      plant_name: diagnosis.plantName,
+      action: fertRecommendation.action,
+      timing: fertRecommendation.timing,
+      dosage: fertRecommendation.dosage,
+      reasoning: fertRecommendation.reasoning.join('. ')
+    }
+  }];
+}
+
+return [];
+```
+
+**Example 2: Real-time Event Monitoring**
+
+```
+[Schedule: Every 5 minutes]
+    → [MCP Tool: get_plant_events]
+    → [Code: Process Events]
+    → [Switch by Severity]
+        → Critical: [Urgent Notification + Log to DB]
+        → Warning: [Standard Notification]
+        → Info: [Log Only]
+```
+
+**Code Node - Process Events:**
+```javascript
+const eventsData = $input.item.json;
+const events = eventsData.events || [];
+
+// Group by severity
+const grouped = {
+  critical: [],
+  warning: [],
+  info: []
+};
+
+events.forEach(event => {
+  grouped[event.severity].push(event);
+});
+
+// Return items for switch node
+return Object.keys(grouped).flatMap(severity =>
+  grouped[severity].map(event => ({
+    json: {
+      ...event,
+      severity_group: severity
+    }
+  }))
+);
+```
+
+**Switch Node Configuration:**
+```javascript
+// Mode: Based on Expression
+// Output: Multiple
+
+// Route 1: Critical
+{{ $json.severity_group === 'critical' }}
+
+// Route 2: Warning
+{{ $json.severity_group === 'warning' }}
+
+// Route 3: Info
+{{ $json.severity_group === 'info' }}
+```
+
+**Example 3: Smart Watering with Database History**
+
+```
+[Webhook: Water Plant Completed]
+    → [MCP Tool: log_care_action]
+    → [PostgreSQL: Store History]
+    → [MCP Tool: diagnose_plant]
+    → [Code: Calculate Next Watering]
+    → [Schedule Future Reminder]
+```
+
+**MCP Tool - Log Care Action:**
+```json
+{
+  "plant_id": "{{ $json.plant_id }}",
+  "action_type": "watering",
+  "notes": "Watered {{ $json.amount }}ml"
+}
+```
+
+#### 5. Available MCP Tools
+
+The FYTA MCP Server provides these tools:
+
+| Tool | Parameters | Description |
+|------|------------|-------------|
+| `list_plants` | - | Get all plants with current status |
+| `get_plant` | `plant_id` | Get details for specific plant |
+| `diagnose_plant` | `plant_id`, `include_recommendations` | Full diagnosis with recommendations |
+| `get_plant_events` | `severity?`, `days?` | Get plant events/alerts |
+| `get_measurements` | `plant_id`, `timeline` | Get sensor measurements |
+| `log_care_action` | `plant_id`, `action_type`, `notes?` | Log care activity |
+| `get_care_history` | `plant_id`, `days?`, `action_type?` | Get care history |
+| `get_sensor_info` | `plant_id` | Get sensor details |
+| `interpret_sensor` | `plant_id`, `value`, `metric` | Interpret sensor reading |
+
+#### 6. Error Handling
+
+Always add error handling to your workflows:
+
+**Try-Catch Pattern:**
+```
+[MCP Tool]
+    → [On Error: Catch]
+        → [Log Error to File/DB]
+        → [Send Error Notification]
+        → [Stop and Wait]
+```
+
+**Retry Logic:**
+```javascript
+// In Code node before MCP call
+const maxRetries = 3;
+let retryCount = $executionData.retryCount || 0;
+
+if (retryCount >= maxRetries) {
+  throw new Error('Max retries reached');
+}
+
+// Store retry count
+return {
+  json: {
+    ...($json),
+    retryCount: retryCount + 1
+  }
+};
+```
+
+#### 7. Best Practices
+
+**Performance:**
+- ✅ Use **Split In Batches** when processing multiple plants
+- ✅ Set reasonable polling intervals (5-15 minutes for events, 30-60 minutes for diagnostics)
+- ✅ Cache plant data in n8n memory/database for frequently accessed info
+
+**Reliability:**
+- ✅ Add **error handlers** to all MCP Tool nodes
+- ✅ Implement **retry logic** with exponential backoff
+- ✅ Log all failures to database for debugging
+
+**Security:**
+- ✅ Store FYTA credentials in **environment variables** (not in workflow JSON)
+- ✅ Use n8n's credential system for sensitive data
+- ✅ Don't expose MCP server to internet without authentication
+
+**Notifications:**
+- ✅ Implement **notification throttling** (max 1 per plant per day)
+- ✅ Use different channels for different severities (critical → push, warning → email)
+- ✅ Add **action buttons** to notifications (e.g., "Mark as watered")
+
+#### 8. Troubleshooting
+
+**MCP Server Not Connecting:**
+```bash
+# Check if server is running
+ps aux | grep fyta_mcp_server
+
+# Test MCP connection manually
+python -m fyta_mcp_server --transport stdio
+
+# Check logs
+tail -f ~/.n8n/logs/mcp-fyta.log
+```
+
+**n8n-nodes-mcp Issues:**
+```bash
+# Reinstall community node
+cd ~/.n8n
+npm uninstall @joshuatz/n8n-nodes-mcp
+npm install @joshuatz/n8n-nodes-mcp
+
+# Check n8n logs
+docker logs n8n  # if using Docker
+# or
+~/.n8n/logs/n8n.log  # if using npm
+```
+
+**Tool Call Errors:**
+```javascript
+// In Code node, add debug logging
+console.log('MCP Response:', JSON.stringify($input.item.json, null, 2));
+
+// Check for error fields
+if ($input.item.json.error) {
+  throw new Error($input.item.json.error);
+}
+```
+
+#### 9. Example: Complete Workflow JSON
+
+Download ready-to-use workflows:
+- [Daily Plant Health Report](../examples/n8n/daily-health-report.json)
+- [Critical Event Alerts](../examples/n8n/critical-alerts.json)
+- [Fertilization Tracker](../examples/n8n/fertilization-tracker.json)
+
+---
+
+### Method 2: HTTP Request with Polling
 
 #### 1. Setup Python API Wrapper
 
